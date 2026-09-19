@@ -109,7 +109,7 @@ struct ThreeOneOSFiveApp: App {
             }
             .onChange(of: scenePhase) { phase in
                 guard phase == .active, keySession.isAuthenticated, !showOnboarding else { return }
-                keySession.refresh()
+                Task { await keySession.refresh() }
                 appState.detectSupport()
             }
             .onOpenURL { url in

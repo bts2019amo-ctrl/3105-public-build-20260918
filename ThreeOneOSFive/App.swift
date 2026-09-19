@@ -322,7 +322,6 @@ final class IOSKeySession: ObservableObject {
             let envelope = try JSONDecoder().decode(IOSKeyResponseEnvelope.self, from: responseData)
             let result = envelope.result.data.json
             let accepted = result.success == true
-                && result.valid == true
                 && result.active == true
                 && result.status?.lowercased() == "active"
             guard accepted else {
@@ -333,7 +332,7 @@ final class IOSKeySession: ObservableObject {
 
             storedKey = key
             if saveOnSuccess { Self.writeKeychain(key) }
-            expiresAt = result.expiresAt.flatMap { Self.dateFormatter.date(from: $0) }
+            expiresAt = result.expiresAt.flatMap(Self.parseDate)
             errorMessage = nil
             isAuthenticated = true
         } catch {
@@ -359,6 +358,16 @@ final class IOSKeySession: ObservableObject {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
     }()
+
+    private static let dateFormatterWithoutFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    private static func parseDate(_ value: String) -> Date? {
+        dateFormatter.date(from: value) ?? dateFormatterWithoutFractionalSeconds.date(from: value)
+    }
 
     private static func readKeychain() -> String? {
         let query: [String: Any] = [

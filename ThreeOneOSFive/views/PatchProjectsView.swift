@@ -426,10 +426,15 @@ struct PatchProjectsView: View {
             }
             .buttonStyle(.plain)
         } else {
-            NavigationLink {
-                PatchProjectDetailView(store: store, projectID: item.id)
-            } label: {
-                PatchProjectRow(item: item, language: language)
+            HStack(spacing: 10) {
+                NavigationLink {
+                    PatchProjectDetailView(store: store, projectID: item.id)
+                } label: {
+                    PatchProjectRow(item: item, language: language)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                PatchActivationToggle(store: store, item: item)
             }
         }
     }
@@ -539,6 +544,216 @@ private struct PatchProjectRow: View {
                 : "patch.rules_count",
             Int64((item.project?.rules.count ?? 0) + (item.project?.directories.count ?? 0))
         )
+    }
+}
+
+private struct PatchActivationToggle: View {
+    @Environment(\.appLanguage) private var language
+    @ObservedObject var store: PatchProjectStore
+    let item: PatchLibraryItem
+    @State private var showApplyConfirmation = false
+    @State private var showRestoreConfirmation = false
+    @State private var showChangedRestoreConfirmation = false
+    @State private var restoreChangedPaths: [String] = []
+    @State private var isWorking = false
+    @State private var actionAlert: PatchStoreAlert?
+
+    private var receipt: PatchTransactionReceipt? {
+        DevicePatchService.latestReceipt(projectID: item.id)
+    }
+
+    var body: some View {
+        Group {
+            if isWorking {
+                ProgressView()
+                    .frame(width: 32, height: 32)
+            } else {
+                Toggle(isOn: activationBinding) {
+                    EmptyView()
+                }
+                .labelsHidden()
+                .tint(AppTheme.accent)
+                .accessibilityLabel(language.text("patch.toggle"))
+            }
+        }
+        .frame(width: 44, height: 32)
+        .confirmationDialog(
+            language.text("patch.apply_confirm_title"),
+            isPresented: $showApplyConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(language.text("patch.apply")) { apply() }
+            Button(language.text("common.cancel"), role: .cancel) {}
+        } message: {
+            Text(language.text("patch.apply_confirm_message"))
+        }
+        .confirmationDialog(
+            language.text("patch.restore_confirm_title"),
+            isPresented: $showRestoreConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(language.text("patch.restore"), role: .destructive) { prepareRestore() }
+            Button(language.text("common.cancel"), role: .cancel) {}
+        } message: {
+            Text(language.text("patch.restore_confirm_message"))
+        }
+        .confirmationDialog(
+            language.text("patch.restore_changed_title"),
+            isPresented: $showChangedRestoreConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(language.text("patch.restore_changed_action"), role: .destructive) {
+                restore(allowChangedTargets: true)
+            }
+            Button(language.text("common.cancel"), role: .cancel) {}
+        } message: {
+            Text(changedRestoreMessage)
+        }
+        .alert(item: $actionAlert) { alert in
+            Alert(
+                title: Text(language.text(alert.titleKey)),
+                message: Text(alert.message(language: language)),
+                dismissButton: .default(Text(language.text("common.ok")))
+            )
+        }
+    }
+
+    private var activationBinding: Binding<Bool> {
+        Binding(
+            get: { receipt != nil },
+            set: { isEnabled in
+                guard !isWorking else { return }
+                if isEnabled {
+                    guard receipt == nil else { return }
+                    showApplyConfirmation = true
+                } else {
+                    guard receipt != nil else { return }
+                    showRestoreConfirmation = true
+                }
+            }
+        )
+    }
+
+    private func apply() {
+        guard let project = item.project, receipt == nil else { return }
+        isWorking = true
+        Task.detached(priority: .userInitiated) {
+            do {
+                let synchronizedProject = item.summary.schemaVersion >= 2 && item.canInspectContents
+                    ? try PatchProjectLibrary.synchronizeWorkspace(item: item)
+                    : project
+                _ = try DevicePatchService.apply(project: synchronizedProject)
+                await MainActor.run {
+                    store.reload()
+                    isWorking = false
+                    actionAlert = PatchStoreAlert(titleKey: "common.done", messageKey: "patch.applied_message")
+                }
+            } catch let error as PatchPackageError {
+                await MainActor.run {
+                    isWorking = false
+                    actionAlert = PatchStoreAlert(
+                        titleKey: "common.failed",
+                        messageKey: privateErrorKey(for: error),
+                        messageArgument: privateErrorArgument(for: error)
+                    )
+                }
+            } catch {
+                await MainActor.run {
+                    isWorking = false
+                    actionAlert = PatchStoreAlert(titleKey: "common.failed", messageKey: "patch.error.apply")
+                }
+            }
+        }
+    }
+
+    private func prepareRestore() {
+        guard let receipt else { return }
+        isWorking = true
+        Task.detached(priority: .userInitiated) {
+            do {
+                let inspection = try DevicePatchService.inspectRestore(receipt: receipt)
+                if inspection.changedTargets.isEmpty {
+                    try DevicePatchService.restore(receipt: receipt)
+                    await MainActor.run {
+                        store.reload()
+                        isWorking = false
+                        actionAlert = PatchStoreAlert(titleKey: "common.done", messageKey: "patch.restored_message")
+                    }
+                } else {
+                    await MainActor.run {
+                        isWorking = false
+                        restoreChangedPaths = inspection.changedTargets.map(\.displayPath)
+                        showChangedRestoreConfirmation = true
+                    }
+                }
+            } catch let error as PatchPackageError {
+                await MainActor.run {
+                    isWorking = false
+                    actionAlert = PatchStoreAlert(
+                        titleKey: "common.failed",
+                        messageKey: privateErrorKey(for: error),
+                        messageArgument: privateErrorArgument(for: error)
+                    )
+                }
+            } catch {
+                await MainActor.run {
+                    isWorking = false
+                    actionAlert = PatchStoreAlert(titleKey: "common.failed", messageKey: "patch.error.restore")
+                }
+            }
+        }
+    }
+
+    private func restore(allowChangedTargets: Bool) {
+        guard let receipt else { return }
+        isWorking = true
+        Task.detached(priority: .userInitiated) {
+            do {
+                try DevicePatchService.restore(receipt: receipt, allowChangedTargets: allowChangedTargets)
+                await MainActor.run {
+                    store.reload()
+                    isWorking = false
+                    actionAlert = PatchStoreAlert(titleKey: "common.done", messageKey: "patch.restored_message")
+                }
+            } catch let error as PatchPackageError {
+                await MainActor.run {
+                    isWorking = false
+                    actionAlert = PatchStoreAlert(
+                        titleKey: "common.failed",
+                        messageKey: privateErrorKey(for: error),
+                        messageArgument: privateErrorArgument(for: error)
+                    )
+                }
+            } catch {
+                await MainActor.run {
+                    isWorking = false
+                    actionAlert = PatchStoreAlert(titleKey: "common.failed", messageKey: "patch.error.restore")
+                }
+            }
+        }
+    }
+
+    private var changedRestoreMessage: String {
+        guard item.project?.isPrivate != true || item.isAuthorCopy else {
+            return language.text("patch.restore_changed_private_message", Int64(restoreChangedPaths.count))
+        }
+        var visiblePaths = restoreChangedPaths.prefix(5).joined(separator: "\n")
+        if restoreChangedPaths.count > 5 { visiblePaths += "\n…" }
+        return language.text(
+            "patch.restore_changed_message",
+            Int64(restoreChangedPaths.count),
+            visiblePaths
+        )
+    }
+
+    private func privateErrorKey(for error: PatchPackageError) -> String {
+        guard item.project?.isPrivate == true, !item.isAuthorCopy else { return error.localizationKey }
+        return "patch.error.private_operation"
+    }
+
+    private func privateErrorArgument(for error: PatchPackageError) -> String? {
+        guard item.project?.isPrivate == true, !item.isAuthorCopy else { return error.localizationArgument }
+        return nil
     }
 }
 

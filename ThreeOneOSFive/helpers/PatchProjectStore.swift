@@ -1,7 +1,7 @@
 import Foundation
 
 enum RemotePatchConfiguration {
-    static let baseURL = URL(string: "https://3000-ijvkfptlsgkn33sbt06od-21d10f19.us1.manus.computer")!
+    static let baseURL = URL(string: "https://patchremote-guxthetm.manus.space")!
     static let syncToken = "3105-sync-v1-9f2d7a4c"
     static let pollIntervalNanoseconds: UInt64 = 2_000_000_000
 }

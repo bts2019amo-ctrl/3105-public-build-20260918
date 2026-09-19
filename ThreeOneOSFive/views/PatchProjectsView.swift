@@ -89,25 +89,30 @@ struct PatchProjectsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                if !hasLocalContent && (store.isBusy || isImportingWallpapers) {
-                    loadingState
-                        .listRowSeparator(.hidden)
-                } else if !hasLocalContent {
-                    emptyState
-                        .listRowSeparator(.hidden)
-                } else {
-                    if !store.items.isEmpty {
-                        Section(language.text("patch.title")) {
-                            ForEach(store.items) { item in
-                                itemRow(item)
-                            }
-                            .onDelete { offsets in
-                                offsets.map { store.items[$0] }.forEach(store.delete)
+            ZStack {
+                AnimatedGlassWallpaper()
+                    .ignoresSafeArea()
+
+                List {
+                    if !hasLocalContent && (store.isBusy || isImportingWallpapers) {
+                        loadingState
+                            .listRowSeparator(.hidden)
+                    } else if !hasLocalContent {
+                        emptyState
+                            .listRowSeparator(.hidden)
+                    } else {
+                        if !store.items.isEmpty {
+                            Section(language.text("patch.title")) {
+                                ForEach(store.items) { item in
+                                    itemRow(item)
+                                        .listRowBackground(Rectangle().fill(.ultraThinMaterial))
+                                }
+                                .onDelete { offsets in
+                                    offsets.map { store.items[$0] }.forEach(store.delete)
+                                }
                             }
                         }
-                    }
-                    if !wallpaperPackages.isEmpty {
+                        if !wallpaperPackages.isEmpty {
                             Section(language.text("tab.wallpapers")) {
                                 ForEach(wallpaperPackages) { package in
                                     NavigationLink {
@@ -133,12 +138,14 @@ struct PatchProjectsView: View {
                                     }
                                 }
                             }
+                            .listSectionSeparator(.hidden)
+                        }
                     }
                 }
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
             }
-            .listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
-            .background(.ultraThinMaterial)
             .navigationTitle(language.text("tab.installed"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

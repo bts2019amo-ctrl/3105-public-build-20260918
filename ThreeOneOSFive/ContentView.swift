@@ -7,6 +7,8 @@ struct ContentView: View {
     @EnvironmentObject private var patchDraftCoordinator: PatchDraftCoordinator
     @EnvironmentObject private var patchStore: PatchProjectStore
     @EnvironmentObject private var repositoryStore: PackageRepositoryStore
+    @AppStorage(AppTheme.accentPaletteStorageKey)
+    private var accentPalette = AppTheme.defaultAccentPalette
     @AppStorage(FeatureVisibility.developerModeStorageKey)
     private var developerModeEnabled = false
     @State private var tabNavigation: AppTabNavigationState
@@ -49,6 +51,7 @@ struct ContentView: View {
                 compactLayout
             }
         }
+        .id(accentPalette)
         .tint(AppTheme.accent)
         .imageScale(.small)
         .onChange(of: patchDraftCoordinator.request?.id) { requestID in

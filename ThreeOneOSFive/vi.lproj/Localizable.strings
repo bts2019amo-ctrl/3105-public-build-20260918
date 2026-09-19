@@ -114,6 +114,11 @@
 
 "patch.title" = "Patch";
 "patch.category" = "Nhóm patch";
+"patch.feature" = "Loại patch";
+"patch.feature.cache" = "Cache";
+"patch.feature.avatar" = "Avatar";
+"patch.feature.hologram" = "Hologram";
+"patch.feature.external" = "External";
 "patch.ff_normal" = "FF NORMAL";
 "patch.ff_max" = "FF MAX";
 "patch.add" = "Thêm dự án patch";

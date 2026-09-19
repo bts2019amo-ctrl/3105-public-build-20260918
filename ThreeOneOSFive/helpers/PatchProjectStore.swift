@@ -73,6 +73,10 @@ final class PatchProjectStore: ObservableObject {
                     PatchProjectLibrary.selectedCategory,
                     for: project.id
                 )
+                PatchProjectLibrary.setFeatureCategory(
+                    PatchProjectLibrary.selectedFeatureCategory,
+                    for: project.id
+                )
             } catch {
                 try? FileManager.default.removeItem(at: workspace)
                 if let savedURL {
@@ -373,6 +377,7 @@ final class PatchProjectStore: ObservableObject {
                 origin: origin
             )
             PatchProjectLibrary.setCategory(PatchProjectLibrary.selectedCategory, for: summary.packageID)
+            PatchProjectLibrary.setFeatureCategory(PatchProjectLibrary.selectedFeatureCategory, for: summary.packageID)
             return nil
         }
         if summary.isPasswordProtected {
@@ -395,6 +400,7 @@ final class PatchProjectStore: ObservableObject {
                     origin: origin
                 )
                 PatchProjectLibrary.setCategory(PatchProjectLibrary.selectedCategory, for: summary.packageID)
+                PatchProjectLibrary.setFeatureCategory(PatchProjectLibrary.selectedFeatureCategory, for: summary.packageID)
             } catch {
                 try? PatchKeyStore.delete(for: summary)
                 throw error
@@ -410,6 +416,7 @@ final class PatchProjectStore: ObservableObject {
             origin: origin
         )
         PatchProjectLibrary.setCategory(PatchProjectLibrary.selectedCategory, for: summary.packageID)
+        PatchProjectLibrary.setFeatureCategory(PatchProjectLibrary.selectedFeatureCategory, for: summary.packageID)
         return nil
     }
 

@@ -114,6 +114,11 @@
 
 "patch.title" = "Patches";
 "patch.category" = "Patch category";
+"patch.feature" = "Patch type";
+"patch.feature.cache" = "Cache";
+"patch.feature.avatar" = "Avatar";
+"patch.feature.hologram" = "Hologram";
+"patch.feature.external" = "External";
 "patch.ff_normal" = "FF NORMAL";
 "patch.ff_max" = "FF MAX";
 "patch.add" = "Add patch project";

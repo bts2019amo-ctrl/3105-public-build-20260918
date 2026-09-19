@@ -114,6 +114,11 @@
 
 "patch.title" = "补丁";
 "patch.category" = "补丁分类";
+"patch.feature" = "补丁类型";
+"patch.feature.cache" = "Cache";
+"patch.feature.avatar" = "Avatar";
+"patch.feature.hologram" = "Hologram";
+"patch.feature.external" = "External";
 "patch.ff_normal" = "FF NORMAL";
 "patch.ff_max" = "FF MAX";
 "patch.add" = "添加补丁项目";

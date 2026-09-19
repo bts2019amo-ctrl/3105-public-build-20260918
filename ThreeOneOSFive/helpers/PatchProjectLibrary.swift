@@ -7,6 +7,15 @@ enum PatchGameCategory: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum PatchFeatureCategory: String, CaseIterable, Identifiable {
+    case cache
+    case avatar
+    case hologram
+    case external
+
+    var id: String { rawValue }
+}
+
 struct PatchLibraryItem: Identifiable {
     let summary: PatchPackageSummary
     var project: PatchProject?
@@ -43,7 +52,9 @@ struct PatchPasswordRequest: Identifiable {
 
 enum PatchProjectLibrary {
     private static let categoryDefaultsKey = "patch.game.category"
+    private static let featureDefaultsKey = "patch.feature.category"
     private static let selectedCategoryKey = "patch.game.selected.category"
+    private static let selectedFeatureKey = "patch.feature.selected.category"
     private static let authorCopiesDirectoryName = ".AuthorCopies"
     private static let originsDirectoryName = ".Origins"
 
@@ -143,6 +154,17 @@ enum PatchProjectLibrary {
         UserDefaults.standard.set(categories, forKey: categoryDefaultsKey)
     }
 
+    static func featureCategory(for item: PatchLibraryItem) -> PatchFeatureCategory {
+        let features = UserDefaults.standard.dictionary(forKey: featureDefaultsKey) as? [String: String]
+        return features?[item.id.uuidString].flatMap(PatchFeatureCategory.init(rawValue:)) ?? .cache
+    }
+
+    static func setFeatureCategory(_ category: PatchFeatureCategory, for packageID: UUID) {
+        var features = UserDefaults.standard.dictionary(forKey: featureDefaultsKey) as? [String: String] ?? [:]
+        features[packageID.uuidString] = category.rawValue
+        UserDefaults.standard.set(features, forKey: featureDefaultsKey)
+    }
+
     static var selectedCategory: PatchGameCategory {
         PatchGameCategory(
             rawValue: UserDefaults.standard.string(forKey: selectedCategoryKey) ?? "normal"
@@ -151,6 +173,16 @@ enum PatchProjectLibrary {
 
     static func setSelectedCategory(_ category: PatchGameCategory) {
         UserDefaults.standard.set(category.rawValue, forKey: selectedCategoryKey)
+    }
+
+    static var selectedFeatureCategory: PatchFeatureCategory {
+        PatchFeatureCategory(
+            rawValue: UserDefaults.standard.string(forKey: selectedFeatureKey) ?? "cache"
+        ) ?? .cache
+    }
+
+    static func setSelectedFeatureCategory(_ category: PatchFeatureCategory) {
+        UserDefaults.standard.set(category.rawValue, forKey: selectedFeatureKey)
     }
 
     static func readPackage(at url: URL) throws -> Data {

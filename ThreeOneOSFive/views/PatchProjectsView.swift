@@ -30,6 +30,7 @@ struct PatchProjectsView: View {
     @State private var showSimulatedWallpaperDetail = false
     @State private var simulatedWallpaperDetailGate = OneShotPresentationGate()
     @State private var selectedCategory: PatchGameCategory = PatchProjectLibrary.selectedCategory
+    @State private var selectedFeature: PatchFeatureCategory = PatchProjectLibrary.selectedFeatureCategory
     @State private var expandedPatchID: UUID?
     let onOpenSettings: () -> Void
     let onOpenLogs: () -> Void
@@ -77,7 +78,10 @@ struct PatchProjectsView: View {
     }
 
     private var selectedCategoryItems: [PatchLibraryItem] {
-        store.items.filter { PatchProjectLibrary.category(for: $0) == selectedCategory }
+        store.items.filter {
+            PatchProjectLibrary.category(for: $0) == selectedCategory
+                && PatchProjectLibrary.featureCategory(for: $0) == selectedFeature
+        }
     }
 
     init(
@@ -100,13 +104,42 @@ struct PatchProjectsView: View {
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    Picker(language.text("patch.category"), selection: $selectedCategory) {
-                        Text(language.text("patch.ff_normal")).tag(PatchGameCategory.normal)
-                        Text(language.text("patch.ff_max")).tag(PatchGameCategory.max)
+                    Menu {
+                        Section(language.text("patch.category")) {
+                            Button { selectedCategory = .normal } label: {
+                                menuChoice("patch.ff_normal", selectedCategory == .normal)
+                            }
+                            Button { selectedCategory = .max } label: {
+                                menuChoice("patch.ff_max", selectedCategory == .max)
+                            }
+                        }
+                        Section(language.text("patch.feature")) {
+                            Button { selectedFeature = .cache } label: {
+                                menuChoice("patch.feature.cache", selectedFeature == .cache)
+                            }
+                            Button { selectedFeature = .avatar } label: {
+                                menuChoice("patch.feature.avatar", selectedFeature == .avatar)
+                            }
+                            Button { selectedFeature = .hologram } label: {
+                                menuChoice("patch.feature.hologram", selectedFeature == .hologram)
+                            }
+                            Button { selectedFeature = .external } label: {
+                                menuChoice("patch.feature.external", selectedFeature == .external)
+                            }
+                        }
+                    } label: {
+                        Label(
+                            "\(language.text(selectedCategory == .max ? "patch.ff_max" : "patch.ff_normal")) · \(featureTitle)",
+                            systemImage: "square.grid.2x2.fill"
+                        )
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppTheme.accent)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .background(.ultraThinMaterial, in: Capsule())
                     }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+                    .padding(.top, 10)
+                    .padding(.bottom, 8)
 
                     List {
                         if !hasLocalContent && (store.isBusy || isImportingWallpapers) {
@@ -122,7 +155,8 @@ struct PatchProjectsView: View {
                                 )) {
                                     ForEach(selectedCategoryItems) { item in
                                         itemRow(item)
-                                            .listRowBackground(Rectangle().fill(.ultraThinMaterial))
+                                            .listRowBackground(Color.clear)
+                                            .listRowSeparator(.hidden)
                                     }
                                     .onDelete { offsets in
                                         offsets.map { selectedCategoryItems[$0] }.forEach(store.delete)
@@ -168,6 +202,9 @@ struct PatchProjectsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: selectedCategory) { category in
                 PatchProjectLibrary.setSelectedCategory(category)
+            }
+            .onChange(of: selectedFeature) { feature in
+                PatchProjectLibrary.setSelectedFeatureCategory(feature)
             }
             .toolbar {
                 AppUtilityToolbar(
@@ -431,6 +468,20 @@ struct PatchProjectsView: View {
                         .padding(.leading, 40)
                         .padding(.bottom, 8)
                 }
+            }
+        }
+    }
+
+    private var featureTitle: String {
+        language.text("patch.feature." + selectedFeature.rawValue)
+    }
+
+    private func menuChoice(_ key: String, _ selected: Bool) -> some View {
+        HStack {
+            Text(language.text(key))
+            Spacer()
+            if selected {
+                Image(systemName: "checkmark")
             }
         }
     }

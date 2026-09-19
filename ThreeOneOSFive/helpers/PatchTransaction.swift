@@ -189,20 +189,6 @@ enum PatchTransaction {
             resolvedRules.append(ResolvedRule(rule: rule, containerRoot: root, target: target))
         }
 
-        let occupied = appliedTargetKeys(
-            backupRoot: backupRoot,
-            excludingProjectID: project.id,
-            fileManager: fileManager
-        )
-        for resolved in resolvedRules {
-            let occupancyKey = resolved.rule.bundleID + "\0" + resolved.rule.relativePath
-            if occupied.contains(occupancyKey) {
-                throw PatchPackageError.targetOccupied(
-                    resolved.rule.bundleID + "/" + resolved.rule.relativePath
-                )
-            }
-        }
-
         let transactionID = UUID()
         let transactionDirectory = backupRoot
             .appendingPathComponent(project.id.uuidString, isDirectory: true)

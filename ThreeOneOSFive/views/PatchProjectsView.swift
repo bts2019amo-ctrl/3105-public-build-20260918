@@ -166,7 +166,7 @@ struct PatchProjectsView: View {
             }
             .navigationTitle(language.text("tab.installed"))
             .navigationBarTitleDisplayMode(.inline)
-            .onChange(of: selectedCategory) { _, category in
+            .onChange(of: selectedCategory) { category in
                 PatchProjectLibrary.setSelectedCategory(category)
             }
             .toolbar {

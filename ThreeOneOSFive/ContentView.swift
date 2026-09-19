@@ -30,7 +30,7 @@ struct ContentView: View {
         } else if arguments.contains("--simulate-search-tab") {
             initialTab = 5
         } else {
-            initialTab = 0
+            initialTab = AppSection.installed.rawValue
         }
         _tabNavigation = State(initialValue: AppTabNavigationState(selectedTab: initialTab))
         _showSettings = State(
@@ -187,7 +187,7 @@ struct ContentView: View {
         let selected = AppSection(rawValue: tabNavigation.selectedTab)
         return selected.flatMap {
             featureVisibility.isVisible($0) ? $0 : nil
-        } ?? .home
+        } ?? .installed
     }
 
     private func openSettings() {

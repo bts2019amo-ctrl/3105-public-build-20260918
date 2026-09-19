@@ -74,8 +74,16 @@ final class PatchProjectStore: ObservableObject {
 
     private var pendingUnlock: PendingUnlock?
     private var remoteSyncTask: Task<Void, Never>?
+    private var isActivated = false
 
-    init() {
+    init(autoLoad: Bool = true) {
+        guard autoLoad else { return }
+        activate()
+    }
+
+    func activate() {
+        guard !isActivated else { return }
+        isActivated = true
         isBusy = true
         Task.detached(priority: .userInitiated) { [weak self] in
             let loadedItems = PatchProjectLibrary.load()
@@ -83,12 +91,22 @@ final class PatchProjectStore: ObservableObject {
         }
     }
 
+    func deactivateAndClear() {
+        isActivated = false
+        stopRemoteSync()
+        items = []
+        isBusy = false
+        passwordRequest = nil
+        alert = nil
+        unlockErrorKey = nil
+    }
+
     func reload() {
         items = PatchProjectLibrary.load()
     }
 
     func startRemoteSync() {
-        guard remoteSyncTask == nil else { return }
+        guard isActivated, remoteSyncTask == nil else { return }
         remoteSyncTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.synchronizeRemoteFeed()

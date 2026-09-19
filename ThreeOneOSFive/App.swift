@@ -1,13 +1,15 @@
 import SwiftUI
 import UIKit
+import Security
 
 @main
 struct ThreeOneOSFiveApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var patchDraftCoordinator = PatchDraftCoordinator()
     @StateObject private var fileOperationCoordinator = FileOperationCoordinator()
-    @StateObject private var patchStore = PatchProjectStore()
+    @StateObject private var patchStore = PatchProjectStore(autoLoad: false)
     @StateObject private var repositoryStore = PackageRepositoryStore()
+    @StateObject private var keySession = IOSKeySession()
     @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
     @AppStorage(AppTheme.accentPaletteStorageKey)
     private var accentPalette = AppTheme.defaultAccentPalette
@@ -36,18 +38,24 @@ struct ThreeOneOSFiveApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                ContentView()
-                    .environmentObject(appState)
-                    .environmentObject(patchDraftCoordinator)
-                    .environmentObject(fileOperationCoordinator)
-                    .environmentObject(patchStore)
-                    .environmentObject(repositoryStore)
-                    .environment(\.appLanguage, language)
-                    .environment(\.locale, language.locale)
-                    .opacity(showOnboarding ? 0 : 1)
-                    .allowsHitTesting(!showOnboarding)
+                if keySession.isAuthenticated {
+                    ContentView()
+                        .environmentObject(appState)
+                        .environmentObject(patchDraftCoordinator)
+                        .environmentObject(fileOperationCoordinator)
+                        .environmentObject(patchStore)
+                        .environmentObject(repositoryStore)
+                        .environment(\.appLanguage, language)
+                        .environment(\.locale, language.locale)
+                        .opacity(showOnboarding ? 0 : 1)
+                        .allowsHitTesting(!showOnboarding)
+                } else {
+                    IOSKeyLoginView(session: keySession)
+                        .environment(\.appLanguage, language)
+                        .environment(\.locale, language.locale)
+                }
 
-                if showOnboarding {
+                if keySession.isAuthenticated && showOnboarding {
                     OnboardingView {
                         OnboardingStore.markCompleted()
                         withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.24)) {
@@ -66,7 +74,7 @@ struct ThreeOneOSFiveApp: App {
                     .zIndex(1)
                 }
             }
-            .displayIdentityAttribution(isPresented: $showAttribution, enabled: !showOnboarding)
+            .displayIdentityAttribution(isPresented: $showAttribution, enabled: keySession.isAuthenticated && !showOnboarding)
             .sheet(isPresented: $showAttribution) {
                 DisplayAttributionSheet()
             }
@@ -83,13 +91,25 @@ struct ThreeOneOSFiveApp: App {
                 )
             }
             .onAppear {
-                if !showOnboarding {
+                if keySession.isAuthenticated && !showOnboarding {
+                    patchStore.activate()
+                    patchStore.startRemoteSync()
                     appState.detectSupport()
                     checkForUpdate()
                 }
             }
+            .onChange(of: keySession.isAuthenticated) { authenticated in
+                if authenticated {
+                    patchStore.activate()
+                    patchStore.startRemoteSync()
+                    appState.detectSupport()
+                } else {
+                    patchStore.deactivateAndClear()
+                }
+            }
             .onChange(of: scenePhase) { phase in
-                guard phase == .active, !showOnboarding else { return }
+                guard phase == .active, keySession.isAuthenticated, !showOnboarding else { return }
+                keySession.refresh()
                 appState.detectSupport()
             }
             .onOpenURL { url in
@@ -203,5 +223,251 @@ class AppState: ObservableObject {
                 }
             }
         }
+    }
+}
+
+private struct IOSKeyResponseEnvelope: Decodable {
+    let result: IOSKeyResponseResult
+}
+
+private struct IOSKeyResponseResult: Decodable {
+    let data: IOSKeyResponseData
+}
+
+private struct IOSKeyResponseData: Decodable {
+    let json: IOSKeyValidation
+}
+
+private struct IOSKeyValidation: Decodable {
+    let success: Bool?
+    let valid: Bool?
+    let active: Bool?
+    let status: String?
+    let message: String?
+    let reason: String?
+    let expiresAt: String?
+}
+
+@MainActor
+final class IOSKeySession: ObservableObject {
+    @Published private(set) var isAuthenticated = false
+    @Published private(set) var isChecking = false
+    @Published private(set) var expiresAt: Date?
+    @Published var errorMessage: String?
+
+    private static let endpoint = URL(string: "https://proxysystem.org/api/trpc/proxyKeys.publicCheckKey")!
+    private static let keychainService = "com.3105.ios-key"
+    private static let keychainAccount = "proxy-system-key"
+    private var storedKey: String?
+    private var monitorTask: Task<Void, Never>?
+
+    init() {
+        storedKey = Self.readKeychain()
+        monitorTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard !Task.isCancelled else { return }
+                await self?.refresh()
+            }
+        }
+        if storedKey != nil {
+            Task { await refresh() }
+        }
+    }
+
+    deinit {
+        monitorTask?.cancel()
+    }
+
+    func submit(_ rawKey: String) {
+        let key = rawKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else {
+            errorMessage = "Digite sua chave iOS."
+            return
+        }
+        Task { await validate(key, saveOnSuccess: true) }
+    }
+
+    func refresh() async {
+        guard !isChecking, let storedKey, !storedKey.isEmpty else { return }
+        await validate(storedKey, saveOnSuccess: false)
+    }
+
+    func logout() {
+        storedKey = nil
+        expiresAt = nil
+        isAuthenticated = false
+        errorMessage = nil
+        Self.deleteKeychain()
+    }
+
+    private func validate(_ key: String, saveOnSuccess: Bool) async {
+        guard !isChecking else { return }
+        isChecking = true
+        defer { isChecking = false }
+        do {
+            var components = URLComponents(url: Self.endpoint, resolvingAgainstBaseURL: false)!
+            let input: [String: Any] = [
+                "json": ["key": key, "deviceId": Self.deviceIdentifier]
+            ]
+            let data = try JSONSerialization.data(withJSONObject: input)
+            components.queryItems = [URLQueryItem(
+                name: "input",
+                value: String(data: data, encoding: .utf8)
+            )]
+            let (responseData, response) = try await URLSession.shared.data(from: components.url!)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+                throw URLError(.badServerResponse)
+            }
+            let envelope = try JSONDecoder().decode(IOSKeyResponseEnvelope.self, from: responseData)
+            let result = envelope.result.data.json
+            let accepted = result.success == true
+                && result.valid == true
+                && result.active == true
+                && result.status?.lowercased() == "active"
+            guard accepted else {
+                logout()
+                errorMessage = result.message ?? result.reason ?? "Chave inválida ou expirada."
+                return
+            }
+
+            storedKey = key
+            if saveOnSuccess { Self.writeKeychain(key) }
+            expiresAt = result.expiresAt.flatMap { Self.dateFormatter.date(from: $0) }
+            errorMessage = nil
+            isAuthenticated = true
+        } catch {
+            if !isAuthenticated {
+                errorMessage = "Não foi possível verificar a chave. Verifique sua conexão."
+            }
+        }
+    }
+
+    private static var deviceIdentifier: String {
+        if let identifier = UIDevice.current.identifierForVendor?.uuidString {
+            return identifier
+        }
+        let key = "ios.device.identifier"
+        if let saved = UserDefaults.standard.string(forKey: key) { return saved }
+        let generated = UUID().uuidString
+        UserDefaults.standard.set(generated, forKey: key)
+        return generated
+    }
+
+    private static let dateFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static func readKeychain() -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: keychainAccount,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var result: AnyObject?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private static func writeKeychain(_ key: String) {
+        let data = Data(key.utf8)
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: keychainAccount
+        ]
+        SecItemDelete(query as CFDictionary)
+        var item = query
+        item[kSecValueData as String] = data
+        SecItemAdd(item as CFDictionary, nil)
+    }
+
+    private static func deleteKeychain() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: keychainAccount
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+}
+
+struct IOSKeyLoginView: View {
+    @ObservedObject var session: IOSKeySession
+    @State private var key = ""
+
+    var body: some View {
+        ZStack {
+            AnimatedGlassWallpaper()
+                .ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 22) {
+                    Spacer(minLength: 44)
+                    AppLogo(size: 76)
+                        .shadow(color: AppTheme.accent.opacity(0.35), radius: 22)
+                    VStack(spacing: 8) {
+                        Text("Acesso protegido")
+                            .font(.system(size: 34, weight: .bold, design: .rounded))
+                        Text("Digite sua chave iOS para carregar os patches remotamente.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("CHAVE IOS")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(AppTheme.accent)
+                            .tracking(1.2)
+                        TextField("PROXY-SYSTEM-...", text: $key)
+                            .textInputAutocapitalization(.characters)
+                            .autocorrectionDisabled()
+                            .textFieldStyle(.plain)
+                            .padding(16)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 17).stroke(AppTheme.accent.opacity(0.28)))
+                    }
+
+                    if let error = session.errorMessage {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    Button {
+                        session.submit(key)
+                    } label: {
+                        Group {
+                            if session.isChecking {
+                                ProgressView().tint(.white)
+                            } else {
+                                Text("Validar e entrar")
+                                    .font(.headline.weight(.semibold))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(AppTheme.accent)
+                    .disabled(session.isChecking)
+
+                    Text("Os patches não ficam dentro da IPA. Eles só aparecem depois da validação da chave.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 34)
+            }
+        }
+        .tint(AppTheme.accent)
     }
 }

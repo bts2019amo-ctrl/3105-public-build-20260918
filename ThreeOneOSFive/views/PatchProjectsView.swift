@@ -105,6 +105,19 @@ struct PatchProjectsView: View {
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        AppLogo(size: 42)
+                            .shadow(color: AppTheme.accent.opacity(0.28), radius: 10)
+                        Text("EXTERNAL SYSTEM")
+                            .font(.headline.weight(.bold))
+                            .tracking(1.1)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
+                    .padding(.bottom, 4)
+
                     Menu {
                         Section(language.text("patch.category")) {
                             Button { selectedCategory = .normal } label: {

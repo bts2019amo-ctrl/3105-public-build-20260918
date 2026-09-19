@@ -420,6 +420,10 @@ struct IOSKeyLoginView: View {
                     Spacer(minLength: 44)
                     AppLogo(size: 76)
                         .shadow(color: AppTheme.accent.opacity(0.35), radius: 22)
+                    Text("EXTERNAL SYSTEM")
+                        .font(.headline.weight(.bold))
+                        .tracking(1.4)
+                        .foregroundStyle(.primary)
                     VStack(spacing: 8) {
                         Text("Acesso protegido")
                             .font(.system(size: 34, weight: .bold, design: .rounded))

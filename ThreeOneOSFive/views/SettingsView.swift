@@ -55,7 +55,7 @@ struct SettingsView: View {
         HStack(spacing: 14) {
             AppLogo(size: 54)
             VStack(alignment: .leading, spacing: 4) {
-                Text("3105")
+                Text("EXTERNAL SYSTEM")
                     .font(.title3.weight(.bold))
                 Text(language.text("common.version", appVersion))
                     .font(.subheadline)

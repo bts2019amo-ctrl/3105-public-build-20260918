@@ -1,5 +1,12 @@
 import Foundation
 
+enum PatchGameCategory: String, CaseIterable, Identifiable {
+    case normal
+    case max
+
+    var id: String { rawValue }
+}
+
 struct PatchLibraryItem: Identifiable {
     let summary: PatchPackageSummary
     var project: PatchProject?
@@ -35,6 +42,8 @@ struct PatchPasswordRequest: Identifiable {
 }
 
 enum PatchProjectLibrary {
+    private static let categoryDefaultsKey = "patch.game.category"
+    private static let selectedCategoryKey = "patch.game.selected.category"
     private static let authorCopiesDirectoryName = ".AuthorCopies"
     private static let originsDirectoryName = ".Origins"
 
@@ -118,6 +127,30 @@ enum PatchProjectLibrary {
         return byID.values.sorted {
             ($0.project?.updatedAt ?? .distantPast) > ($1.project?.updatedAt ?? .distantPast)
         }
+    }
+
+    static func category(for item: PatchLibraryItem) -> PatchGameCategory {
+        let categories = UserDefaults.standard.dictionary(forKey: categoryDefaultsKey) as? [String: String]
+        if let stored = categories?[item.id.uuidString], let category = PatchGameCategory(rawValue: stored) {
+            return category
+        }
+        return item.project?.name.localizedCaseInsensitiveContains("max") == true ? .max : .normal
+    }
+
+    static func setCategory(_ category: PatchGameCategory, for packageID: UUID) {
+        var categories = UserDefaults.standard.dictionary(forKey: categoryDefaultsKey) as? [String: String] ?? [:]
+        categories[packageID.uuidString] = category.rawValue
+        UserDefaults.standard.set(categories, forKey: categoryDefaultsKey)
+    }
+
+    static var selectedCategory: PatchGameCategory {
+        PatchGameCategory(
+            rawValue: UserDefaults.standard.string(forKey: selectedCategoryKey) ?? "normal"
+        ) ?? .normal
+    }
+
+    static func setSelectedCategory(_ category: PatchGameCategory) {
+        UserDefaults.standard.set(category.rawValue, forKey: selectedCategoryKey)
     }
 
     static func readPackage(at url: URL) throws -> Data {

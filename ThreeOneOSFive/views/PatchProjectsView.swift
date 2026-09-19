@@ -29,6 +29,8 @@ struct PatchProjectsView: View {
     @State private var isImportingWallpapers = false
     @State private var showSimulatedWallpaperDetail = false
     @State private var simulatedWallpaperDetailGate = OneShotPresentationGate()
+    @State private var selectedCategory: PatchGameCategory = PatchProjectLibrary.selectedCategory
+    @State private var expandedPatchID: UUID?
     let onOpenSettings: () -> Void
     let onOpenLogs: () -> Void
 
@@ -74,16 +76,8 @@ struct PatchProjectsView: View {
         !filteredItems.isEmpty || !filteredWallpaperPackages.isEmpty
     }
 
-    private var ffNormalItems: [PatchLibraryItem] {
-        store.items.filter { !isFFMax($0) }
-    }
-
-    private var ffMaxItems: [PatchLibraryItem] {
-        store.items.filter(isFFMax)
-    }
-
-    private func isFFMax(_ item: PatchLibraryItem) -> Bool {
-        item.project?.name.localizedCaseInsensitiveContains("max") == true
+    private var selectedCategoryItems: [PatchLibraryItem] {
+        store.items.filter { PatchProjectLibrary.category(for: $0) == selectedCategory }
     }
 
     init(
@@ -105,36 +99,37 @@ struct PatchProjectsView: View {
                 AnimatedGlassWallpaper()
                     .ignoresSafeArea()
 
-                List {
-                    if !hasLocalContent && (store.isBusy || isImportingWallpapers) {
-                        loadingState
-                            .listRowSeparator(.hidden)
-                    } else if !hasLocalContent {
-                        emptyState
-                            .listRowSeparator(.hidden)
-                    } else {
-                    if !ffNormalItems.isEmpty {
-                        Section(language.text("patch.ff_normal")) {
-                            ForEach(ffNormalItems) { item in
-                                itemRow(item)
-                                    .listRowBackground(Rectangle().fill(.ultraThinMaterial))
-                            }
-                            .onDelete { offsets in
-                                offsets.map { ffNormalItems[$0] }.forEach(store.delete)
+                VStack(spacing: 0) {
+                    Picker(language.text("patch.category"), selection: $selectedCategory) {
+                        Text(language.text("patch.ff_normal")).tag(PatchGameCategory.normal)
+                        Text(language.text("patch.ff_max")).tag(PatchGameCategory.max)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+
+                    List {
+                        if !hasLocalContent && (store.isBusy || isImportingWallpapers) {
+                            loadingState
+                                .listRowSeparator(.hidden)
+                        } else if !hasLocalContent {
+                            emptyState
+                                .listRowSeparator(.hidden)
+                        } else {
+                            if !selectedCategoryItems.isEmpty {
+                                Section(language.text(
+                                    selectedCategory == .max ? "patch.ff_max" : "patch.ff_normal"
+                                )) {
+                                    ForEach(selectedCategoryItems) { item in
+                                        itemRow(item)
+                                            .listRowBackground(Rectangle().fill(.ultraThinMaterial))
+                                    }
+                                    .onDelete { offsets in
+                                        offsets.map { selectedCategoryItems[$0] }.forEach(store.delete)
+                                    }
+                                }
                             }
                         }
-                    }
-                    if !ffMaxItems.isEmpty {
-                        Section(language.text("patch.ff_max")) {
-                            ForEach(ffMaxItems) { item in
-                                itemRow(item)
-                                    .listRowBackground(Rectangle().fill(.ultraThinMaterial))
-                            }
-                            .onDelete { offsets in
-                                offsets.map { ffMaxItems[$0] }.forEach(store.delete)
-                            }
-                        }
-                    }
                         if !wallpaperPackages.isEmpty {
                             Section(language.text("tab.wallpapers")) {
                                 ForEach(wallpaperPackages) { package in
@@ -164,13 +159,16 @@ struct PatchProjectsView: View {
                             .listSectionSeparator(.hidden)
                         }
                     }
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
                 }
-                .listStyle(.insetGrouped)
-                .scrollContentBackground(.hidden)
-                .background(Color.clear)
             }
             .navigationTitle(language.text("tab.installed"))
             .navigationBarTitleDisplayMode(.inline)
+            .onChange(of: selectedCategory) { _, category in
+                PatchProjectLibrary.setSelectedCategory(category)
+            }
             .toolbar {
                 AppUtilityToolbar(
                     language: language,
@@ -412,10 +410,27 @@ struct PatchProjectsView: View {
             }
             .buttonStyle(.plain)
         } else {
-            HStack(spacing: 10) {
-                PatchProjectRow(item: item, language: language)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                PatchActivationToggle(store: store, item: item)
+            VStack(alignment: .leading, spacing: 0) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.22)) {
+                        expandedPatchID = expandedPatchID == item.id ? nil : item.id
+                    }
+                } label: {
+                    HStack(spacing: 10) {
+                        PatchProjectRow(item: item, language: language)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: expandedPatchID == item.id ? "chevron.up" : "chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                if expandedPatchID == item.id {
+                    PatchActivationToggle(store: store, item: item)
+                        .padding(.leading, 40)
+                        .padding(.bottom, 8)
+                }
             }
         }
     }

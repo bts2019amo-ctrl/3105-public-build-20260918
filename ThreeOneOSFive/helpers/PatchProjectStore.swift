@@ -69,6 +69,10 @@ final class PatchProjectStore: ObservableObject {
                     projectName: project.name
                 )
                 try PatchProjectLibrary.markAsAuthorCopy(packageID: project.id)
+                PatchProjectLibrary.setCategory(
+                    PatchProjectLibrary.selectedCategory,
+                    for: project.id
+                )
             } catch {
                 try? FileManager.default.removeItem(at: workspace)
                 if let savedURL {
@@ -368,6 +372,7 @@ final class PatchProjectStore: ObservableObject {
                 existingURL: existingURL,
                 origin: origin
             )
+            PatchProjectLibrary.setCategory(PatchProjectLibrary.selectedCategory, for: summary.packageID)
             return nil
         }
         if summary.isPasswordProtected {
@@ -389,6 +394,7 @@ final class PatchProjectStore: ObservableObject {
                     existingURL: existingURL,
                     origin: origin
                 )
+                PatchProjectLibrary.setCategory(PatchProjectLibrary.selectedCategory, for: summary.packageID)
             } catch {
                 try? PatchKeyStore.delete(for: summary)
                 throw error
@@ -403,6 +409,7 @@ final class PatchProjectStore: ObservableObject {
             existingURL: existingURL,
             origin: origin
         )
+        PatchProjectLibrary.setCategory(PatchProjectLibrary.selectedCategory, for: summary.packageID)
         return nil
     }
 

@@ -24,7 +24,6 @@ jobs:
           xcodebuild \
             -project ThreeOneOSFive.xcodeproj \
             -scheme 3105 \
-            -target 3105 \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \

@@ -1,13 +1,39 @@
 import SwiftUI
 
-enum AppTheme {
-    static let accent = Color(
-        uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(red: 1.00, green: 0.64, blue: 0.42, alpha: 1.00)
-                : UIColor(red: 0.85, green: 0.42, blue: 0.20, alpha: 1.00)
+enum AppAccentPalette: String, CaseIterable, Identifiable {
+    case orange
+    case blue
+    case purple
+    case green
+    case pink
+    case red
+    case teal
+
+    var id: String { rawValue }
+
+    var color: Color {
+        switch self {
+        case .orange: return Color(red: 0.92, green: 0.40, blue: 0.16)
+        case .blue: return Color(red: 0.16, green: 0.45, blue: 0.95)
+        case .purple: return Color(red: 0.55, green: 0.30, blue: 0.90)
+        case .green: return Color(red: 0.12, green: 0.62, blue: 0.36)
+        case .pink: return Color(red: 0.92, green: 0.25, blue: 0.52)
+        case .red: return Color(red: 0.88, green: 0.18, blue: 0.20)
+        case .teal: return Color(red: 0.08, green: 0.62, blue: 0.66)
         }
-    )
+    }
+}
+
+enum AppTheme {
+    static let accentPaletteStorageKey = "theme.accent.palette"
+    static let defaultAccentPalette = AppAccentPalette.orange.rawValue
+
+    static var accent: Color {
+        AppAccentPalette(
+            rawValue: UserDefaults.standard.string(forKey: accentPaletteStorageKey)
+                ?? defaultAccentPalette
+        )?.color ?? AppAccentPalette.orange.color
+    }
     static let pageBackground = Color(uiColor: .systemBackground)
     static let consoleBackground = Color(uiColor: .secondarySystemBackground)
     static let pageInset: CGFloat = 16

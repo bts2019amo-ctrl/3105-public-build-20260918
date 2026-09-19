@@ -9,6 +9,8 @@ struct ThreeOneOSFiveApp: App {
     @StateObject private var patchStore = PatchProjectStore()
     @StateObject private var repositoryStore = PackageRepositoryStore()
     @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
+    @AppStorage(AppTheme.accentPaletteStorageKey)
+    private var accentPalette = AppTheme.defaultAccentPalette
     @State private var showOnboarding = false
     @State private var showAttribution = false
     @State private var updateOffer: AppUpdateChecker.Offer?
@@ -93,6 +95,7 @@ struct ThreeOneOSFiveApp: App {
             .onOpenURL { url in
                 patchDraftCoordinator.presentImport(url)
             }
+            .tint(AppTheme.accent)
         }
     }
 }

@@ -253,6 +253,15 @@
 
 "settings.title" = "Settings";
 "settings.language" = "Language";
+"settings.palette" = "App color";
+"settings.palette_footer" = "Choose the accent color used across the entire app.";
+"settings.palette.orange" = "Orange";
+"settings.palette.blue" = "Blue";
+"settings.palette.purple" = "Purple";
+"settings.palette.green" = "Green";
+"settings.palette.pink" = "Pink";
+"settings.palette.red" = "Red";
+"settings.palette.teal" = "Teal";
 "settings.ios_version" = "iOS Version";
 "settings.exploit_status" = "Exploit Status";
 "settings.support" = "Support";

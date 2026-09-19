@@ -5,145 +5,40 @@ struct SettingsView: View {
     @Environment(\.appLanguage) private var language
     @EnvironmentObject private var appState: AppState
     @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
-    @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
-    @AppStorage(FeatureVisibility.developerModeStorageKey)
-    private var developerModeEnabled = false
+    @AppStorage(AppTheme.accentPaletteStorageKey)
+    private var accentPalette = AppTheme.defaultAccentPalette
+
+    private var selectedPalette: AppAccentPalette {
+        AppAccentPalette(rawValue: accentPalette) ?? .orange
+    }
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    HStack(spacing: 14) {
-                        AppLogo()
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        AppTheme.accent.opacity(0.16),
+                        Color(uiColor: .systemBackground).opacity(0.92),
+                        AppTheme.accent.opacity(0.06)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
 
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("3105").font(.headline)
-                            Text(language.text("common.version", appVersion))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
+                ScrollView {
+                    VStack(spacing: 16) {
+                        profileCard
+                        languageCard
+                        paletteCard
+                        deviceCard
+                        supportCard
                     }
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 20)
                 }
-
-                Section(language.text("settings.language")) {
-                    Picker(language.text("settings.language"), selection: $languageCode) {
-                        ForEach(AppLanguage.allCases) { option in
-                            Text(option.displayName).tag(option.rawValue)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                }
-
-                Section {
-                    Toggle(isOn: $cleanerEnabled) {
-                        Label(language.text("tab.cleaner"), systemImage: "sparkles")
-                    }
-                    Toggle(isOn: $developerModeEnabled) {
-                        Label(
-                            language.text("settings.developer_mode"),
-                            systemImage: "hammer.fill"
-                        )
-                    }
-                } header: {
-                    Text(language.text("dashboard.features"))
-                } footer: {
-                    Text(language.text("settings.developer_mode_footer"))
-                }
-
-                if WallpaperFeatureSupportPolicy.isSupported(
-                    major: AppInfo.versionTuple.major
-                ) {
-                    Section {
-                        NavigationLink {
-                            WallpaperResetSettingsView()
-                        } label: {
-                            Label(
-                                language.text("wallpaper.reset"),
-                                systemImage: "arrow.counterclockwise"
-                            )
-                        }
-                    } header: {
-                        Text(language.text("tab.wallpapers"))
-                    } footer: {
-                        Text(language.text("wallpaper.reset_settings_footer"))
-                    }
-                }
-
-                Section(language.text("common.device")) {
-                    LabeledContent(language.text("dashboard.hardware_model"), value: AppInfo.displayMachineName)
-                    LabeledContent(language.text("settings.ios_version"), value: "\(AppInfo.osVersion) (\(AppInfo.osBuild))")
-                }
-
-                Section {
-                    HStack {
-                        Text(language.text("settings.current_version"))
-                        Spacer()
-                        Text(language.text(appState.isSupported ? "settings.supported" : "settings.unsupported"))
-                        .foregroundStyle(appState.isSupported ? Color.green : Color.red)
-                    }
-                    LabeledContent("iOS 17", value: ExploitSupportPolicy.verifiedIOS17Range)
-                    LabeledContent("iOS 18", value: ExploitSupportPolicy.verifiedIOS18Range)
-                    LabeledContent("iOS 26", value: ExploitSupportPolicy.verifiedIOS26Range)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("iOS 27.0")
-                            .font(.body)
-                        ForEach(ExploitSupportPolicy.verifiedIOS27Builds, id: \.build) { version in
-                            Text(versionLabel(version))
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.vertical, 2)
-                } header: {
-                    Text(language.text("settings.verified_versions"))
-                } footer: {
-                    Text(language.text("settings.supported_versions_footer"))
-                }
-
-                Section(language.text("settings.social_media")) {
-                    creditsRow(
-                        name: "GitHub",
-                        role: language.text("social.github_role"),
-                        url: "https://github.com/YangJiiii/3105"
-                    )
-                    creditsRow(
-                        name: "Cộng Đồng IOSVN",
-                        role: language.text("social.iosvn_role"),
-                        url: "https://t.me/ioscrackvn"
-                    )
-                }
-
-                Section(language.text("settings.credits")) {
-                    creditsRow(
-                        name: "YangJiii",
-                        role: language.text("credit.yangjiii"),
-                        url: "https://x.com/duongduong0908"
-                    )
-                    creditsRow(
-                        name: "0xjohnnydev",
-                        role: language.text("credit.filzaslop"),
-                        url: "https://github.com/0xjohnnydev/FilzaSlop"
-                    )
-                    creditsRow(
-                        name: "LeminLimez",
-                        role: language.text("credit.pocket_poster"),
-                        url: "https://github.com/leminlimez/Pocket-Poster"
-                    )
-                    creditsRow(
-                        name: "CrazyMind90",
-                        role: language.text("credit.sandbox_escape"),
-                        url: "https://github.com/CrazyMind90"
-                    )
-                    creditsRow(
-                        name: "forcequitOS",
-                        role: language.text("credit.forcequit"),
-                        url: "https://github.com/forcequitOS"
-                    )
-                }
+                .scrollIndicators(.hidden)
             }
-            .tint(AppTheme.accent)
             .navigationTitle(language.text("settings.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -152,6 +47,142 @@ struct SettingsView: View {
                         .fontWeight(.semibold)
                 }
             }
+        }
+        .tint(AppTheme.accent)
+    }
+
+    private var profileCard: some View {
+        HStack(spacing: 14) {
+            AppLogo(size: 54)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("3105")
+                    .font(.title3.weight(.bold))
+                Text(language.text("common.version", appVersion))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text(language.text(appState.isSupported ? "settings.supported" : "settings.unsupported"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(appState.isSupported ? .green : .red)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .foregroundStyle(.tertiary)
+        }
+        .padding(18)
+        .glassCard()
+    }
+
+    private var languageCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            settingsCardHeader("settings.language", systemImage: "globe")
+            Picker(language.text("settings.language"), selection: $languageCode) {
+                ForEach(AppLanguage.allCases) { option in
+                    Text(option.displayName).tag(option.rawValue)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+        }
+        .padding(18)
+        .glassCard()
+    }
+
+    private var paletteCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            settingsCardHeader("settings.palette", systemImage: "paintpalette.fill")
+            Text(language.text("settings.palette_footer"))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 12)], spacing: 12) {
+                ForEach(AppAccentPalette.allCases) { palette in
+                    Button {
+                        accentPalette = palette.rawValue
+                    } label: {
+                        VStack(spacing: 7) {
+                            Circle()
+                                .fill(palette.color)
+                                .frame(width: 38, height: 38)
+                                .overlay {
+                                    if palette == selectedPalette {
+                                        Circle().stroke(.white, lineWidth: 3)
+                                        Image(systemName: "checkmark")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(.white)
+                                    }
+                                }
+                                .shadow(color: palette.color.opacity(0.32), radius: 8)
+                            Text(language.text("settings.palette." + palette.rawValue))
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.primary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(
+                            palette.color.opacity(palette == selectedPalette ? 0.16 : 0.06),
+                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(18)
+        .glassCard()
+    }
+
+    private var deviceCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            settingsCardHeader("common.device", systemImage: "iphone")
+            settingValue(language.text("dashboard.hardware_model"), AppInfo.displayMachineName)
+            settingValue(language.text("settings.ios_version"), "\(AppInfo.osVersion) (\(AppInfo.osBuild))")
+        }
+        .padding(18)
+        .glassCard()
+    }
+
+    private var supportCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            settingsCardHeader("settings.verified_versions", systemImage: "checkmark.seal.fill")
+            settingValue(
+                language.text("settings.current_version"),
+                language.text(appState.isSupported ? "settings.supported" : "settings.unsupported")
+            )
+            versionLine("iOS 17", ExploitSupportPolicy.verifiedIOS17Range)
+            versionLine("iOS 18", ExploitSupportPolicy.verifiedIOS18Range)
+            versionLine("iOS 26", ExploitSupportPolicy.verifiedIOS26Range)
+            ForEach(ExploitSupportPolicy.verifiedIOS27Builds, id: \.build) { version in
+                versionLine("iOS 27", versionLabel(version))
+            }
+        }
+        .padding(18)
+        .glassCard()
+    }
+
+    private func settingsCardHeader(_ key: String, systemImage: String) -> some View {
+        Label(language.text(key), systemImage: systemImage)
+            .font(.headline)
+            .foregroundStyle(AppTheme.accent)
+    }
+
+    private func settingValue(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label).foregroundStyle(.secondary)
+            Spacer(minLength: 12)
+            Text(value)
+                .multilineTextAlignment(.trailing)
+                .foregroundStyle(.primary)
+        }
+        .font(.subheadline)
+    }
+
+    private func versionLine(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label).font(.subheadline.weight(.semibold))
+            Spacer(minLength: 12)
+            Text(value)
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.trailing)
         }
     }
 
@@ -172,35 +203,17 @@ struct SettingsView: View {
                 version.build
             )
         }
-        return language.text(
-            "settings.developer_beta_build",
-            Int64(version.beta),
-            version.build
-        )
+        return language.text("settings.developer_beta_build", Int64(version.beta), version.build)
     }
+}
 
-    @ViewBuilder
-    private func creditsRow(name: String, role: String, url: String) -> some View {
-        if let destination = URL(string: url) {
-            Link(destination: destination) {
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(name)
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                        Text(role)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(AppTheme.accent)
-                        .frame(width: 28, height: 28)
-                }
-                .contentShape(Rectangle())
+private extension View {
+    func glassCard() -> some View {
+        background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(.white.opacity(0.20), lineWidth: 0.8)
             }
-            .accessibilityLabel(language.text("accessibility.open_profile", name))
-        }
+            .shadow(color: .black.opacity(0.08), radius: 18, y: 8)
     }
 }

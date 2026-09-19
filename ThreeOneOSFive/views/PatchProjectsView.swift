@@ -89,37 +89,27 @@ struct PatchProjectsView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                AppSearchField(
-                    text: $searchText,
-                    prompt: language.text("installed.search"),
-                    clearLabel: language.text("common.clear")
-                )
-                Divider()
-                List {
-                    if !hasLocalContent && (store.isBusy || isImportingWallpapers) {
-                        loadingState
-                            .listRowSeparator(.hidden)
-                    } else if !hasLocalContent {
-                        emptyState
-                            .listRowSeparator(.hidden)
-                    } else if !hasSearchResults && !store.isBusy {
-                        searchEmptyState
-                            .listRowSeparator(.hidden)
-                    } else {
-                        if !filteredItems.isEmpty {
-                            Section(language.text("patch.title")) {
-                                ForEach(filteredItems) { item in
-                                    itemRow(item)
-                                }
-                                .onDelete { offsets in
-                                    offsets.map { filteredItems[$0] }.forEach(store.delete)
-                                }
+            List {
+                if !hasLocalContent && (store.isBusy || isImportingWallpapers) {
+                    loadingState
+                        .listRowSeparator(.hidden)
+                } else if !hasLocalContent {
+                    emptyState
+                        .listRowSeparator(.hidden)
+                } else {
+                    if !store.items.isEmpty {
+                        Section(language.text("patch.title")) {
+                            ForEach(store.items) { item in
+                                itemRow(item)
+                            }
+                            .onDelete { offsets in
+                                offsets.map { store.items[$0] }.forEach(store.delete)
                             }
                         }
-                        if !filteredWallpaperPackages.isEmpty {
+                    }
+                    if !wallpaperPackages.isEmpty {
                             Section(language.text("tab.wallpapers")) {
-                                ForEach(filteredWallpaperPackages) { package in
+                                ForEach(wallpaperPackages) { package in
                                     NavigationLink {
                                         InstalledWallpaperPackageDetailView(
                                             package: package,
@@ -143,49 +133,15 @@ struct PatchProjectsView: View {
                                     }
                                 }
                             }
-                        }
-                    }
-                    if cleanerEnabled {
-                        Section(language.text("repository.utilities")) {
-                            cleanerRow
-                        }
                     }
                 }
-                .listStyle(.insetGrouped)
             }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(.ultraThinMaterial)
             .navigationTitle(language.text("tab.installed"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button {
-                            showCreate = true
-                        } label: {
-                            Label(language.text("patch.new"), systemImage: "doc.badge.plus")
-                        }
-                        Button {
-                            showImporter = true
-                        } label: {
-                            Label(language.text("patch.import"), systemImage: "square.and.arrow.down")
-                        }
-                        Button {
-                            showWallpaperImporter = true
-                        } label: {
-                            Label(
-                                language.text("wallpaper.import"),
-                                systemImage: "photo.badge.plus"
-                            )
-                        }
-                    } label: {
-                        if store.isBusy || isImportingWallpapers {
-                            ProgressView()
-                        } else {
-                            Image(systemName: "plus")
-                        }
-                    }
-                    .disabled(store.isBusy || isImportingWallpapers)
-                    .accessibilityLabel(language.text("patch.add"))
-                }
                 AppUtilityToolbar(
                     language: language,
                     onOpenSettings: onOpenSettings,
@@ -427,13 +383,8 @@ struct PatchProjectsView: View {
             .buttonStyle(.plain)
         } else {
             HStack(spacing: 10) {
-                NavigationLink {
-                    PatchProjectDetailView(store: store, projectID: item.id)
-                } label: {
-                    PatchProjectRow(item: item, language: language)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
+                PatchProjectRow(item: item, language: language)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 PatchActivationToggle(store: store, item: item)
             }
         }

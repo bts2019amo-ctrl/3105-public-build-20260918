@@ -253,6 +253,15 @@
 
 "settings.title" = "Cài đặt";
 "settings.language" = "Ngôn ngữ";
+"settings.palette" = "Màu ứng dụng";
+"settings.palette_footer" = "Chọn màu nhấn dùng trên toàn bộ ứng dụng.";
+"settings.palette.orange" = "Cam";
+"settings.palette.blue" = "Xanh dương";
+"settings.palette.purple" = "Tím";
+"settings.palette.green" = "Xanh lá";
+"settings.palette.pink" = "Hồng";
+"settings.palette.red" = "Đỏ";
+"settings.palette.teal" = "Xanh ngọc";
 "settings.ios_version" = "Phiên bản iOS";
 "settings.exploit_status" = "Trạng thái exploit";
 "settings.support" = "Hỗ trợ";

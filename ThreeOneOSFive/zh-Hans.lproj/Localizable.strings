@@ -253,6 +253,15 @@
 
 "settings.title" = "设置";
 "settings.language" = "语言";
+"settings.palette" = "应用颜色";
+"settings.palette_footer" = "选择用于整个应用的强调色。";
+"settings.palette.orange" = "橙色";
+"settings.palette.blue" = "蓝色";
+"settings.palette.purple" = "紫色";
+"settings.palette.green" = "绿色";
+"settings.palette.pink" = "粉色";
+"settings.palette.red" = "红色";
+"settings.palette.teal" = "青色";
 "settings.ios_version" = "iOS 版本";
 "settings.exploit_status" = "漏洞利用状态";
 "settings.support" = "支持";

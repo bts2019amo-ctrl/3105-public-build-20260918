@@ -30,6 +30,7 @@ private struct RemoteFeedPatch: Decodable {
     let feature: String
     let fileKey: String
     let fileUrl: String
+    let iconUrl: String?
     let updatedAt: Int64
 }
 
@@ -166,6 +167,7 @@ final class PatchProjectStore: ObservableObject {
                 PatchProjectLibrary.setRemotePackageID(summary.packageID, for: patch.id)
                 PatchProjectLibrary.setRemoteVersion(patch.updatedAt, for: patch.id)
                 PatchProjectLibrary.setDisplayName(patch.name, for: summary.packageID)
+                PatchProjectLibrary.setRemoteIconURL(patch.iconUrl, for: summary.packageID)
             }
             PatchProjectLibrary.removeRemotePackagesNotInFeed(
                 remoteIDs: Set(feed.patches.map(\.id))

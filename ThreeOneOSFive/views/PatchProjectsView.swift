@@ -127,6 +127,9 @@ struct PatchProjectsView: View {
                             Button { selectedFeature = .external } label: {
                                 menuChoice("patch.feature.external", selectedFeature == .external)
                             }
+                            Button { selectedFeature = .skin } label: {
+                                menuChoice("patch.feature.skin", selectedFeature == .skin)
+                            }
                         }
                     } label: {
                         Label(
@@ -902,7 +905,20 @@ private struct PatchProjectRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            AppRowIcon(systemName: item.isLocked ? "lock.doc.fill" : "shippingbox.fill")
+            if PatchProjectLibrary.featureCategory(for: item) == .skin,
+               let iconURL = PatchProjectLibrary.remoteIconURL(for: item.id) {
+                AsyncImage(url: iconURL) { phase in
+                    if let image = phase.image {
+                        image.resizable().scaledToFill()
+                    } else {
+                        AppRowIcon(systemName: item.isLocked ? "lock.doc.fill" : "shippingbox.fill")
+                    }
+                }
+                .frame(width: 34, height: 34)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            } else {
+                AppRowIcon(systemName: item.isLocked ? "lock.doc.fill" : "shippingbox.fill")
+            }
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.isLocked ? language.text("patch.locked_project") : PatchProjectLibrary.displayName(for: item))
                     .font(.body.weight(.semibold))

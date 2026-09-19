@@ -12,6 +12,7 @@ enum PatchFeatureCategory: String, CaseIterable, Identifiable {
     case avatar
     case hologram
     case external
+    case skin
 
     var id: String { rawValue }
 }
@@ -56,6 +57,7 @@ enum PatchProjectLibrary {
     private static let remoteDefaultsKey = "patch.remote.mapping"
     private static let remoteVersionKey = "patch.remote.version"
     private static let remoteNameKey = "patch.remote.name"
+    private static let remoteIconKey = "patch.remote.icon"
     private static let selectedCategoryKey = "patch.game.selected.category"
     private static let selectedFeatureKey = "patch.feature.selected.category"
     private static let authorCopiesDirectoryName = ".AuthorCopies"
@@ -202,6 +204,22 @@ enum PatchProjectLibrary {
         UserDefaults.standard.set(names, forKey: remoteNameKey)
     }
 
+    static func setRemoteIconURL(_ url: String?, for packageID: UUID) {
+        var icons = UserDefaults.standard.dictionary(forKey: remoteIconKey) as? [String: String] ?? [:]
+        if let url, !url.isEmpty {
+            icons[packageID.uuidString] = url
+        } else {
+            icons.removeValue(forKey: packageID.uuidString)
+        }
+        UserDefaults.standard.set(icons, forKey: remoteIconKey)
+    }
+
+    static func remoteIconURL(for packageID: UUID) -> URL? {
+        let icons = UserDefaults.standard.dictionary(forKey: remoteIconKey) as? [String: String]
+        guard let value = icons?[packageID.uuidString] else { return nil }
+        return URL(string: value, relativeTo: RemotePatchConfiguration.baseURL)?.absoluteURL ?? URL(string: value)
+    }
+
     static func removeRemotePackagesNotInFeed(
         remoteIDs: Set<Int>,
         fileManager: FileManager = .default
@@ -209,8 +227,11 @@ enum PatchProjectLibrary {
         let mappings = UserDefaults.standard.dictionary(forKey: remoteDefaultsKey) as? [String: String] ?? [:]
         let itemsByID = Dictionary(uniqueKeysWithValues: load(fileManager: fileManager).map { ($0.id, $0) })
         for (remoteID, packageIDString) in mappings where !remoteIDs.contains(Int(remoteID) ?? -1) {
-            if let packageID = UUID(uuidString: packageIDString), let item = itemsByID[packageID] {
-                deleteFilesImmediately(for: item, fileManager: fileManager)
+            if let packageID = UUID(uuidString: packageIDString) {
+                if let item = itemsByID[packageID] {
+                    deleteFilesImmediately(for: item, fileManager: fileManager)
+                }
+                setRemoteIconURL(nil, for: packageID)
             }
         }
         let activeMappings = mappings.filter { remoteIDs.contains(Int($0.key) ?? -1) }
@@ -223,7 +244,7 @@ enum PatchProjectLibrary {
             try fileManager.removeItem(at: root)
         }
         try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
-        [categoryDefaultsKey, featureDefaultsKey, remoteDefaultsKey, remoteVersionKey, remoteNameKey]
+        [categoryDefaultsKey, featureDefaultsKey, remoteDefaultsKey, remoteVersionKey, remoteNameKey, remoteIconKey]
             .forEach { UserDefaults.standard.removeObject(forKey: $0) }
     }
 

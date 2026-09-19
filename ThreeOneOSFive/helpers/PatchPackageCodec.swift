@@ -232,6 +232,34 @@ enum PatchPackageCodec {
         return try serialize(envelope)
     }
 
+    static func reidentifyPublicPackage(
+        _ data: Data,
+        decoded: DecodedPatchPackage,
+        newID: UUID
+    ) throws -> Data {
+        let oldEnvelope = try parseEnvelope(data)
+        guard !oldEnvelope.isPasswordProtected,
+              decoded.project.id == oldEnvelope.packageID,
+              fingerprint(decoded.contentKey) == oldEnvelope.keyFingerprint else {
+            throw PatchPackageError.invalidPasswordOrCorruptedPackage
+        }
+        var project = decoded.project
+        project.id = newID
+        try validate(project)
+        let envelope = try makeEnvelope(
+            project: project,
+            schemaVersion: oldEnvelope.schemaVersion,
+            keyAADVersion: nil,
+            contentKey: decoded.contentKey,
+            isPasswordProtected: false,
+            kdfSalt: nil,
+            kdfIterations: nil,
+            wrappedContentKey: nil,
+            publicContentKey: decoded.contentKey
+        )
+        return try serialize(envelope)
+    }
+
     private static func makeEnvelope(
         project: PatchProject,
         schemaVersion: Int,

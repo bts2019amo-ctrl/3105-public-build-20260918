@@ -142,18 +142,31 @@ final class PatchProjectStore: ObservableObject {
             let envelope = try JSONDecoder().decode(RemoteFeedEnvelope.self, from: data)
             let feed = envelope.result.data.json
 
+            var reservedPackageIDs = Set(items.map(\.id))
+            var claimedPackageIDs = Set<UUID>()
             for patch in feed.patches {
                 guard patch.updatedAt > PatchProjectLibrary.remoteVersion(for: patch.id),
                       let category = PatchGameCategory(rawValue: patch.category),
                       let feature = PatchFeatureCategory(rawValue: patch.feature),
                       let url = URL(string: patch.fileUrl, relativeTo: RemotePatchConfiguration.baseURL)?.absoluteURL else { continue }
-                let (packageData, packageResponse) = try await URLSession.shared.data(from: url)
+                var (packageData, packageResponse) = try await URLSession.shared.data(from: url)
                 guard let packageResponse = packageResponse as? HTTPURLResponse,
                       (200..<300).contains(packageResponse.statusCode) else { continue }
-                let summary = try PatchPackageCodec.inspect(packageData)
                 let mappedID = PatchProjectLibrary.remotePackageID(for: patch.id)
-                let existingURL = items.first(where: { $0.id == mappedID })?.packageURL
-                    ?? items.first(where: { $0.id == summary.packageID })?.packageURL
+                var summary = try PatchPackageCodec.inspect(packageData)
+                var existingURL = items.first(where: { $0.id == mappedID })?.packageURL
+                if (mappedID == nil || (mappedID != nil && claimedPackageIDs.contains(mappedID!)))
+                    && reservedPackageIDs.contains(summary.packageID) {
+                    let decoded = try PatchPackageCodec.decode(packageData, password: nil)
+                    let newID = UUID()
+                    packageData = try PatchPackageCodec.reidentifyPublicPackage(
+                        packageData,
+                        decoded: decoded,
+                        newID: newID
+                    )
+                    summary = try PatchPackageCodec.inspect(packageData)
+                    existingURL = nil
+                }
                 guard try Self.persistImportedPackage(
                     data: packageData,
                     summary: summary,
@@ -168,6 +181,8 @@ final class PatchProjectStore: ObservableObject {
                 PatchProjectLibrary.setRemoteVersion(patch.updatedAt, for: patch.id)
                 PatchProjectLibrary.setDisplayName(patch.name, for: summary.packageID)
                 PatchProjectLibrary.setRemoteIconURL(patch.iconUrl, for: summary.packageID)
+                reservedPackageIDs.insert(summary.packageID)
+                claimedPackageIDs.insert(summary.packageID)
             }
             PatchProjectLibrary.removeRemotePackagesNotInFeed(
                 remoteIDs: Set(feed.patches.map(\.id))

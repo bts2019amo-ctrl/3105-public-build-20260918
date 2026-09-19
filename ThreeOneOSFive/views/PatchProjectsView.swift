@@ -15,6 +15,7 @@ private enum WallpaperPackagePickerPolicy {
 
 struct PatchProjectsView: View {
     @Environment(\.appLanguage) private var language
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var draftCoordinator: PatchDraftCoordinator
     @EnvironmentObject private var store: PatchProjectStore
     @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
@@ -205,6 +206,16 @@ struct PatchProjectsView: View {
             }
             .onChange(of: selectedFeature) { feature in
                 PatchProjectLibrary.setSelectedFeatureCategory(feature)
+            }
+            .onAppear {
+                store.startRemoteSync()
+            }
+            .onChange(of: scenePhase) { phase in
+                if phase == .active {
+                    store.startRemoteSync()
+                } else if phase == .background {
+                    store.stopRemoteSync()
+                }
             }
             .toolbar {
                 AppUtilityToolbar(
@@ -547,7 +558,7 @@ private struct PatchProjectRow: View {
         HStack(spacing: 12) {
             AppRowIcon(systemName: item.isLocked ? "lock.doc.fill" : "shippingbox.fill")
             VStack(alignment: .leading, spacing: 3) {
-                Text(item.project?.name ?? language.text("patch.locked_project"))
+                Text(item.isLocked ? language.text("patch.locked_project") : PatchProjectLibrary.displayName(for: item))
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)

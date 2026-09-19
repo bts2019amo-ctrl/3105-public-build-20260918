@@ -53,6 +53,9 @@ struct PatchPasswordRequest: Identifiable {
 enum PatchProjectLibrary {
     private static let categoryDefaultsKey = "patch.game.category"
     private static let featureDefaultsKey = "patch.feature.category"
+    private static let remoteDefaultsKey = "patch.remote.mapping"
+    private static let remoteVersionKey = "patch.remote.version"
+    private static let remoteNameKey = "patch.remote.name"
     private static let selectedCategoryKey = "patch.game.selected.category"
     private static let selectedFeatureKey = "patch.feature.selected.category"
     private static let authorCopiesDirectoryName = ".AuthorCopies"
@@ -163,6 +166,40 @@ enum PatchProjectLibrary {
         var features = UserDefaults.standard.dictionary(forKey: featureDefaultsKey) as? [String: String] ?? [:]
         features[packageID.uuidString] = category.rawValue
         UserDefaults.standard.set(features, forKey: featureDefaultsKey)
+    }
+
+    static func remotePackageID(for remoteID: Int) -> UUID? {
+        let mappings = UserDefaults.standard.dictionary(forKey: remoteDefaultsKey) as? [String: String]
+        guard let value = mappings?[String(remoteID)] else { return nil }
+        return UUID(uuidString: value)
+    }
+
+    static func setRemotePackageID(_ packageID: UUID, for remoteID: Int) {
+        var mappings = UserDefaults.standard.dictionary(forKey: remoteDefaultsKey) as? [String: String] ?? [:]
+        mappings[String(remoteID)] = packageID.uuidString
+        UserDefaults.standard.set(mappings, forKey: remoteDefaultsKey)
+    }
+
+    static func remoteVersion(for remoteID: Int) -> Int64 {
+        let versions = UserDefaults.standard.dictionary(forKey: remoteVersionKey) as? [String: NSNumber]
+        return versions?[String(remoteID)]?.int64Value ?? 0
+    }
+
+    static func setRemoteVersion(_ version: Int64, for remoteID: Int) {
+        var versions = UserDefaults.standard.dictionary(forKey: remoteVersionKey) as? [String: NSNumber] ?? [:]
+        versions[String(remoteID)] = NSNumber(value: version)
+        UserDefaults.standard.set(versions, forKey: remoteVersionKey)
+    }
+
+    static func displayName(for item: PatchLibraryItem) -> String {
+        let names = UserDefaults.standard.dictionary(forKey: remoteNameKey) as? [String: String]
+        return names?[item.id.uuidString] ?? item.project?.name ?? ""
+    }
+
+    static func setDisplayName(_ name: String, for packageID: UUID) {
+        var names = UserDefaults.standard.dictionary(forKey: remoteNameKey) as? [String: String] ?? [:]
+        names[packageID.uuidString] = name
+        UserDefaults.standard.set(names, forKey: remoteNameKey)
     }
 
     static var selectedCategory: PatchGameCategory {

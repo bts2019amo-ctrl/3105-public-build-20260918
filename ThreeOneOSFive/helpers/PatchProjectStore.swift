@@ -1,5 +1,38 @@
 import Foundation
 
+enum RemotePatchConfiguration {
+    static let baseURL = URL(string: "https://3000-ijvkfptlsgkn33sbt06od-21d10f19.us1.manus.computer")!
+    static let syncToken = "3105-sync-v1-9f2d7a4c"
+    static let pollIntervalNanoseconds: UInt64 = 2_000_000_000
+}
+
+private struct RemoteFeedEnvelope: Decodable {
+    let result: RemoteFeedResult
+}
+
+private struct RemoteFeedResult: Decodable {
+    let data: RemoteFeedData
+}
+
+private struct RemoteFeedData: Decodable {
+    let json: RemoteFeed
+}
+
+private struct RemoteFeed: Decodable {
+    let version: Int64
+    let patches: [RemoteFeedPatch]
+}
+
+private struct RemoteFeedPatch: Decodable {
+    let id: Int
+    let name: String
+    let category: String
+    let feature: String
+    let fileKey: String
+    let fileUrl: String
+    let updatedAt: Int64
+}
+
 struct PatchStoreAlert: Identifiable {
     let id = UUID()
     let titleKey: String
@@ -33,9 +66,14 @@ final class PatchProjectStore: ObservableObject {
         let summary: PatchPackageSummary
         let existingURL: URL?
         let origin: PatchPackageOrigin?
+        let remoteID: Int?
+        let remoteVersion: Int64?
+        let remoteCategory: PatchGameCategory?
+        let remoteFeature: PatchFeatureCategory?
     }
 
     private var pendingUnlock: PendingUnlock?
+    private var remoteSyncTask: Task<Void, Never>?
 
     init() {
         isBusy = true
@@ -47,6 +85,74 @@ final class PatchProjectStore: ObservableObject {
 
     func reload() {
         items = PatchProjectLibrary.load()
+    }
+
+    func startRemoteSync() {
+        guard remoteSyncTask == nil else { return }
+        remoteSyncTask = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.synchronizeRemoteFeed()
+                try? await Task.sleep(nanoseconds: RemotePatchConfiguration.pollIntervalNanoseconds)
+            }
+        }
+    }
+
+    func stopRemoteSync() {
+        remoteSyncTask?.cancel()
+        remoteSyncTask = nil
+    }
+
+    private func synchronizeRemoteFeed() async {
+        guard !isBusy else { return }
+        do {
+            var components = URLComponents(
+                url: RemotePatchConfiguration.baseURL.appendingPathComponent("api/trpc/patches.feed"),
+                resolvingAgainstBaseURL: false
+            )!
+            let payload: [String: Any] = [
+                "json": ["syncToken": RemotePatchConfiguration.syncToken]
+            ]
+            let payloadData = try JSONSerialization.data(withJSONObject: payload)
+            components.queryItems = [URLQueryItem(
+                name: "input",
+                value: String(data: payloadData, encoding: .utf8)
+            )]
+            let (data, response) = try await URLSession.shared.data(from: components.url!)
+            guard let response = response as? HTTPURLResponse,
+                  (200..<300).contains(response.statusCode) else { return }
+            let envelope = try JSONDecoder().decode(RemoteFeedEnvelope.self, from: data)
+            let feed = envelope.result.data.json
+
+            for patch in feed.patches {
+                guard patch.updatedAt > PatchProjectLibrary.remoteVersion(for: patch.id),
+                      let category = PatchGameCategory(rawValue: patch.category),
+                      let feature = PatchFeatureCategory(rawValue: patch.feature),
+                      let url = URL(string: patch.fileUrl, relativeTo: RemotePatchConfiguration.baseURL)?.absoluteURL else { continue }
+                let (packageData, packageResponse) = try await URLSession.shared.data(from: url)
+                guard let packageResponse = packageResponse as? HTTPURLResponse,
+                      (200..<300).contains(packageResponse.statusCode) else { continue }
+                let summary = try PatchPackageCodec.inspect(packageData)
+                let mappedID = PatchProjectLibrary.remotePackageID(for: patch.id)
+                let existingURL = items.first(where: { $0.id == mappedID })?.packageURL
+                    ?? items.first(where: { $0.id == summary.packageID })?.packageURL
+                guard try Self.persistImportedPackage(
+                    data: packageData,
+                    summary: summary,
+                    existingURL: existingURL,
+                    category: category,
+                    feature: feature,
+                    remoteID: patch.id,
+                    remoteVersion: patch.updatedAt,
+                    remoteName: patch.name
+                ) == nil else { continue }
+                PatchProjectLibrary.setRemotePackageID(summary.packageID, for: patch.id)
+                PatchProjectLibrary.setRemoteVersion(patch.updatedAt, for: patch.id)
+                PatchProjectLibrary.setDisplayName(patch.name, for: summary.packageID)
+            }
+            reload()
+        } catch {
+            // A temporary network error must not interrupt local patch usage.
+        }
     }
 
     private func finishInitialLoad(_ loadedItems: [PatchLibraryItem]) {
@@ -238,7 +344,11 @@ final class PatchProjectStore: ObservableObject {
                 data: data,
                 summary: item.summary,
                 existingURL: item.packageURL,
-                origin: item.origin
+                origin: item.origin,
+                remoteID: nil,
+                remoteVersion: nil,
+                remoteCategory: nil,
+                remoteFeature: nil
             )
             passwordRequest = PatchPasswordRequest(
                 summary: item.summary,
@@ -267,6 +377,20 @@ final class PatchProjectStore: ObservableObject {
                         existingURL: pending.existingURL,
                         origin: pending.origin
                     )
+                    if let category = pending.remoteCategory {
+                        PatchProjectLibrary.setCategory(category, for: pending.summary.packageID)
+                    } else {
+                        PatchProjectLibrary.setCategory(PatchProjectLibrary.selectedCategory, for: pending.summary.packageID)
+                    }
+                    if let feature = pending.remoteFeature {
+                        PatchProjectLibrary.setFeatureCategory(feature, for: pending.summary.packageID)
+                    } else {
+                        PatchProjectLibrary.setFeatureCategory(PatchProjectLibrary.selectedFeatureCategory, for: pending.summary.packageID)
+                    }
+                    if let remoteID = pending.remoteID {
+                        PatchProjectLibrary.setRemotePackageID(pending.summary.packageID, for: remoteID)
+                        PatchProjectLibrary.setRemoteVersion(pending.remoteVersion ?? 0, for: remoteID)
+                    }
                 } catch {
                     try? PatchKeyStore.delete(for: pending.summary)
                     throw error
@@ -365,8 +489,15 @@ final class PatchProjectStore: ObservableObject {
         summary: PatchPackageSummary,
         existingURL: URL?,
         password: String? = nil,
-        origin: PatchPackageOrigin? = nil
+        origin: PatchPackageOrigin? = nil,
+        category: PatchGameCategory? = nil,
+        feature: PatchFeatureCategory? = nil,
+        remoteID: Int? = nil,
+        remoteVersion: Int64? = nil,
+        remoteName: String? = nil
     ) throws -> PendingUnlock? {
+        let assignedCategory = category ?? PatchProjectLibrary.selectedCategory
+        let assignedFeature = feature ?? PatchProjectLibrary.selectedFeatureCategory
         if let key = try PatchKeyStore.load(for: summary) {
             let decoded = try PatchPackageCodec.decode(data, contentKey: key)
             try PatchProjectLibrary.installImportedPackage(
@@ -376,8 +507,13 @@ final class PatchProjectStore: ObservableObject {
                 existingURL: existingURL,
                 origin: origin
             )
-            PatchProjectLibrary.setCategory(PatchProjectLibrary.selectedCategory, for: summary.packageID)
-            PatchProjectLibrary.setFeatureCategory(PatchProjectLibrary.selectedFeatureCategory, for: summary.packageID)
+            PatchProjectLibrary.setCategory(assignedCategory, for: summary.packageID)
+            PatchProjectLibrary.setFeatureCategory(assignedFeature, for: summary.packageID)
+            if let remoteID {
+                PatchProjectLibrary.setRemotePackageID(summary.packageID, for: remoteID)
+                PatchProjectLibrary.setRemoteVersion(remoteVersion ?? 0, for: remoteID)
+                if let remoteName { PatchProjectLibrary.setDisplayName(remoteName, for: summary.packageID) }
+            }
             return nil
         }
         if summary.isPasswordProtected {
@@ -386,7 +522,11 @@ final class PatchProjectStore: ObservableObject {
                     data: data,
                     summary: summary,
                     existingURL: existingURL,
-                    origin: origin
+                    origin: origin,
+                    remoteID: remoteID,
+                    remoteVersion: remoteVersion,
+                    remoteCategory: category,
+                    remoteFeature: feature
                 )
             }
             let decoded = try PatchPackageCodec.decode(data, password: password)
@@ -399,8 +539,13 @@ final class PatchProjectStore: ObservableObject {
                     existingURL: existingURL,
                     origin: origin
                 )
-                PatchProjectLibrary.setCategory(PatchProjectLibrary.selectedCategory, for: summary.packageID)
-                PatchProjectLibrary.setFeatureCategory(PatchProjectLibrary.selectedFeatureCategory, for: summary.packageID)
+                PatchProjectLibrary.setCategory(assignedCategory, for: summary.packageID)
+                PatchProjectLibrary.setFeatureCategory(assignedFeature, for: summary.packageID)
+                if let remoteID {
+                    PatchProjectLibrary.setRemotePackageID(summary.packageID, for: remoteID)
+                    PatchProjectLibrary.setRemoteVersion(remoteVersion ?? 0, for: remoteID)
+                    if let remoteName { PatchProjectLibrary.setDisplayName(remoteName, for: summary.packageID) }
+                }
             } catch {
                 try? PatchKeyStore.delete(for: summary)
                 throw error
@@ -415,8 +560,13 @@ final class PatchProjectStore: ObservableObject {
             existingURL: existingURL,
             origin: origin
         )
-        PatchProjectLibrary.setCategory(PatchProjectLibrary.selectedCategory, for: summary.packageID)
-        PatchProjectLibrary.setFeatureCategory(PatchProjectLibrary.selectedFeatureCategory, for: summary.packageID)
+        PatchProjectLibrary.setCategory(assignedCategory, for: summary.packageID)
+        PatchProjectLibrary.setFeatureCategory(assignedFeature, for: summary.packageID)
+        if let remoteID {
+            PatchProjectLibrary.setRemotePackageID(summary.packageID, for: remoteID)
+            PatchProjectLibrary.setRemoteVersion(remoteVersion ?? 0, for: remoteID)
+            if let remoteName { PatchProjectLibrary.setDisplayName(remoteName, for: summary.packageID) }
+        }
         return nil
     }
 

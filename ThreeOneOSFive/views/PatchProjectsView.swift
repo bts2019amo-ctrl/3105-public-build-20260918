@@ -74,6 +74,18 @@ struct PatchProjectsView: View {
         !filteredItems.isEmpty || !filteredWallpaperPackages.isEmpty
     }
 
+    private var ffNormalItems: [PatchLibraryItem] {
+        store.items.filter { !isFFMax($0) }
+    }
+
+    private var ffMaxItems: [PatchLibraryItem] {
+        store.items.filter(isFFMax)
+    }
+
+    private func isFFMax(_ item: PatchLibraryItem) -> Bool {
+        item.project?.name.localizedCaseInsensitiveContains("max") == true
+    }
+
     init(
         onOpenSettings: @escaping () -> Void = {},
         onOpenLogs: @escaping () -> Void = {}
@@ -101,17 +113,28 @@ struct PatchProjectsView: View {
                         emptyState
                             .listRowSeparator(.hidden)
                     } else {
-                        if !store.items.isEmpty {
-                            Section(language.text("patch.title")) {
-                                ForEach(store.items) { item in
-                                    itemRow(item)
-                                        .listRowBackground(Rectangle().fill(.ultraThinMaterial))
-                                }
-                                .onDelete { offsets in
-                                    offsets.map { store.items[$0] }.forEach(store.delete)
-                                }
+                    if !ffNormalItems.isEmpty {
+                        Section(language.text("patch.ff_normal")) {
+                            ForEach(ffNormalItems) { item in
+                                itemRow(item)
+                                    .listRowBackground(Rectangle().fill(.ultraThinMaterial))
+                            }
+                            .onDelete { offsets in
+                                offsets.map { ffNormalItems[$0] }.forEach(store.delete)
                             }
                         }
+                    }
+                    if !ffMaxItems.isEmpty {
+                        Section(language.text("patch.ff_max")) {
+                            ForEach(ffMaxItems) { item in
+                                itemRow(item)
+                                    .listRowBackground(Rectangle().fill(.ultraThinMaterial))
+                            }
+                            .onDelete { offsets in
+                                offsets.map { ffMaxItems[$0] }.forEach(store.delete)
+                            }
+                        }
+                    }
                         if !wallpaperPackages.isEmpty {
                             Section(language.text("tab.wallpapers")) {
                                 ForEach(wallpaperPackages) { package in

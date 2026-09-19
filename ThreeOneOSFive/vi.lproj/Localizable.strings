@@ -113,6 +113,8 @@
 "cleaner.select_all_results" = "Chọn tất cả kết quả";
 
 "patch.title" = "Patch";
+"patch.ff_normal" = "FF NORMAL";
+"patch.ff_max" = "FF MAX";
 "patch.add" = "Thêm dự án patch";
 "patch.new" = "Tạo patch";
 "patch.import" = "Nhập .3105";

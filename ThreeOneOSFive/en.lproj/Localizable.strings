@@ -113,6 +113,8 @@
 "cleaner.select_all_results" = "Select All Results";
 
 "patch.title" = "Patches";
+"patch.ff_normal" = "FF NORMAL";
+"patch.ff_max" = "FF MAX";
 "patch.add" = "Add patch project";
 "patch.new" = "New Patch";
 "patch.import" = "Import .3105";

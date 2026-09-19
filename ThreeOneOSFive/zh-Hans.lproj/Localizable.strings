@@ -190,8 +190,9 @@
 "patch.unlock" = "解锁";
 "patch.apply" = "应用补丁";
 "patch.restore" = "恢复原始文件";
+"patch.toggle" = "补丁已启用";
 "patch.reset" = "重置为软件包状态";
-"patch.apply_footer" = "补丁生效期间不能重复应用。重置或恢复文件前，请先关闭目标应用或游戏。";
+"patch.apply_footer" = "打开以应用补丁，关闭以恢复原始文件。更改此开关或重置文件前，请先关闭目标应用或游戏。";
 "patch.apply_confirm_title" = "要应用此补丁吗？";
 "patch.apply_confirm_message" = "将再次验证所有 bundle identifier 和相对路径，并在首次写入前备份原始文件。";
 "patch.restore_confirm_title" = "要恢复原始文件吗？";

@@ -190,8 +190,9 @@
 "patch.unlock" = "Unlock";
 "patch.apply" = "Apply Patch";
 "patch.restore" = "Restore Originals";
+"patch.toggle" = "Patch active";
 "patch.reset" = "Reset to Package";
-"patch.apply_footer" = "Apply is locked while this patch is active. Close the target apps before resetting or restoring files.";
+"patch.apply_footer" = "Turn on to apply the patch. Turn off to restore the original files. Close the target apps before changing this toggle or resetting files.";
 "patch.apply_confirm_title" = "Apply this patch?";
 "patch.apply_confirm_message" = "All bundle identifiers and relative paths will be validated again. Originals are backed up before the first write.";
 "patch.restore_confirm_title" = "Restore original files?";

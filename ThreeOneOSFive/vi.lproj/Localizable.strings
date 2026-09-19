@@ -190,8 +190,9 @@
 "patch.unlock" = "Mở khóa";
 "patch.apply" = "Áp dụng patch";
 "patch.restore" = "Khôi phục file gốc";
+"patch.toggle" = "Patch đang hoạt động";
 "patch.reset" = "Đặt lại theo gói";
-"patch.apply_footer" = "Không thể Apply chồng khi patch đang hoạt động. Hãy đóng app/game đích trước khi đặt lại hoặc khôi phục file.";
+"patch.apply_footer" = "Bật để áp dụng patch. Tắt để khôi phục file gốc. Hãy đóng app/game đích trước khi đổi toggle hoặc đặt lại file.";
 "patch.apply_confirm_title" = "Áp dụng patch này?";
 "patch.apply_confirm_message" = "Mọi bundle identifier và đường dẫn tương đối sẽ được kiểm tra lại. File gốc được sao lưu trước lần ghi đầu tiên.";
 "patch.restore_confirm_title" = "Khôi phục các file gốc?";

@@ -798,12 +798,13 @@ private struct PatchProjectDetailView: View {
                 }
 
                 Section {
-                    Button {
-                        showApplyConfirmation = true
-                    } label: {
-                        actionLabel("patch.apply", systemImage: "checkmark.shield.fill")
+                    Toggle(isOn: patchActivationBinding) {
+                        Label(
+                            language.text("patch.toggle"),
+                            systemImage: "checkmark.shield.fill"
+                        )
                     }
-                    .disabled(isWorking || receipt != nil)
+                    .disabled(isWorking)
 
                     if receipt != nil {
                         Button {
@@ -916,6 +917,22 @@ private struct PatchProjectDetailView: View {
     private func actionLabel(_ key: String, systemImage: String) -> some View {
         Label(language.text(key), systemImage: systemImage)
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var patchActivationBinding: Binding<Bool> {
+        Binding(
+            get: { receipt != nil },
+            set: { isEnabled in
+                guard !isWorking else { return }
+                if isEnabled {
+                    guard receipt == nil else { return }
+                    showApplyConfirmation = true
+                } else {
+                    guard receipt != nil else { return }
+                    showRestoreConfirmation = true
+                }
+            }
+        )
     }
 
     private func patchInfoRow(

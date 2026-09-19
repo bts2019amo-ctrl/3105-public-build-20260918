@@ -142,7 +142,16 @@ struct PatchProjectsView: View {
                     .padding(.top, 10)
                     .padding(.bottom, 8)
 
-                    List {
+                    if selectedFeature == .external {
+                        ExternalPanelView(
+                            store: store,
+                            item: selectedCategoryItems.first,
+                            onRequestUnlock: { item in store.requestUnlock(for: item) }
+                        )
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 12)
+                    } else {
+                        List {
                         if !hasLocalContent && (store.isBusy || isImportingWallpapers) {
                             loadingState
                                 .listRowSeparator(.hidden)
@@ -193,10 +202,11 @@ struct PatchProjectsView: View {
                             }
                             .listSectionSeparator(.hidden)
                         }
+                        }
+                        .listStyle(.insetGrouped)
+                        .scrollContentBackground(.hidden)
+                        .background(Color.clear)
                     }
-                    .listStyle(.insetGrouped)
-                    .scrollContentBackground(.hidden)
-                    .background(Color.clear)
                 }
             }
             .navigationTitle("")
@@ -551,6 +561,332 @@ struct PatchProjectsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 64)
+    }
+}
+
+private enum ExternalPanelTab: String, CaseIterable, Identifiable {
+    case aim
+    case esp
+    case general
+    case xray
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .aim: return "MIRA"
+        case .esp: return "ESP"
+        case .general: return "GERAL"
+        case .xray: return "RAIO-X"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .aim: return "scope"
+        case .esp: return "eye.fill"
+        case .general: return "slider.horizontal.3"
+        case .xray: return "figure.stand"
+        }
+    }
+}
+
+private struct ExternalPanelView: View {
+    @Environment(\.appLanguage) private var language
+    @ObservedObject var store: PatchProjectStore
+    let item: PatchLibraryItem?
+    let onRequestUnlock: (PatchLibraryItem) -> Void
+
+    @State private var selectedTab: ExternalPanelTab = .aim
+    @State private var aimOnFire = true
+    @State private var prioritizeHead = true
+    @State private var fineAim = false
+    @State private var quickHeal = false
+    @State private var boxESP = true
+    @State private var healthESP = false
+    @State private var nameESP = false
+    @State private var distanceESP = false
+    @State private var directionESP = true
+    @State private var markEnemies = false
+    @State private var shotInterval = 0.85
+    @State private var effectDistance = 120.0
+    @State private var isWorking = false
+    @State private var actionMessage: String?
+    @State private var changedRestorePaths: [String] = []
+    @State private var showChangedRestoreConfirmation = false
+
+    private var receipt: PatchTransactionReceipt? {
+        guard let item else { return nil }
+        return DevicePatchService.latestReceipt(projectID: item.id)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            HStack(alignment: .top, spacing: 14) {
+                sidebar
+                content
+            }
+            footer
+        }
+        .padding(14)
+        .background(Color.black.opacity(0.82), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.red.opacity(0.25), lineWidth: 1))
+        .shadow(color: .black.opacity(0.35), radius: 20, y: 10)
+        .alert("EXTERNAL", isPresented: Binding(
+            get: { actionMessage != nil },
+            set: { if !$0 { actionMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { actionMessage = nil }
+        } message: {
+            Text(actionMessage ?? "")
+        }
+        .confirmationDialog(
+            "Restaurar dados originais?",
+            isPresented: $showChangedRestoreConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Restaurar mesmo assim", role: .destructive) { restore(allowChangedTargets: true) }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text(changedRestorePaths.prefix(5).joined(separator: "\n"))
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            AppLogo(size: 44)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("EXTERNAL")
+                    .font(.headline.weight(.black))
+                    .tracking(1.2)
+                Text("PAINEL EXTERNO")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.gray)
+                    .tracking(1.3)
+            }
+            Spacer()
+            Label("ONLINE", systemImage: "circle.fill")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.green)
+        }
+        .foregroundStyle(.white)
+        .padding(.bottom, 14)
+    }
+
+    private var sidebar: some View {
+        VStack(spacing: 8) {
+            ForEach(ExternalPanelTab.allCases) { tab in
+                Button { selectedTab = tab } label: {
+                    VStack(spacing: 5) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 17, weight: .semibold))
+                        Text(tab.title)
+                            .font(.system(size: 8, weight: .bold))
+                    }
+                    .foregroundStyle(selectedTab == tab ? .white : .gray)
+                    .frame(width: 58, height: 58)
+                    .background(selectedTab == tab ? Color.red.opacity(0.85) : Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.top, 2)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(selectedTab == .aim ? "AIMBOT" : selectedTab == .esp ? "PLAYER ESP" : selectedTab.title)
+                    .font(.title3.weight(.black))
+                    .foregroundStyle(.white)
+                if selectedTab == .aim {
+                    toggleRow("Aimbot ao disparar", icon: "scope", isOn: $aimOnFire)
+                    toggleRow("Priorizar cabeça", icon: "person.crop.circle.badge.target", isOn: $prioritizeHead)
+                    toggleRow("Ajuste fino da mira", icon: "keyboard", isOn: $fineAim)
+                    toggleRow("Cura rápida", icon: "cross.case.fill", isOn: $quickHeal)
+                    sliderCard("Intervalo de tiro", icon: "bolt.fill", value: $shotInterval, range: 0.65...1.0, labels: ["NORMAL", "90%", "85%", "75%", "65%"])
+                } else if selectedTab == .esp {
+                    toggleRow("Caixa", icon: "square", isOn: $boxESP)
+                    toggleRow("Vida", icon: "heart.fill", isOn: $healthESP)
+                    toggleRow("Nome", icon: "person.text.rectangle", isOn: $nameESP)
+                    toggleRow("Distância", icon: "ruler", isOn: $distanceESP)
+                    toggleRow("Direção", icon: "location.north.fill", isOn: $directionESP)
+                    toggleRow("Marcar inimigos", icon: "figure.stand", isOn: $markEnemies)
+                    sliderCard("Distância dos efeitos", icon: "ruler.fill", value: $effectDistance, range: 20...240, labels: ["20 m", "80 m", "120 m", "180 m", "240 m"])
+                } else {
+                    toggleRow("Modo seguro", icon: "shield.fill", isOn: .constant(true))
+                    toggleRow("Otimização externa", icon: "wand.and.stars", isOn: .constant(true))
+                    toggleRow("Proteção de sessão", icon: "lock.shield.fill", isOn: .constant(true))
+                    Text("Selecione MIRA ou ESP para ajustar os recursos do painel.")
+                        .font(.caption)
+                        .foregroundStyle(.gray)
+                        .padding(.top, 5)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var footer: some View {
+        HStack(spacing: 10) {
+            Button { resetControls() } label: {
+                Label("LIMPAR DADOS", systemImage: "trash.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 13)
+                    .background(Color.white.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            Button { applySelectedPatch() } label: {
+                Label(isWorking ? "APLICANDO…" : "INICIAR", systemImage: "play.fill")
+                    .font(.caption.weight(.black))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 13)
+                    .background(Color.red, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(isWorking || item == nil)
+            .opacity(item == nil ? 0.45 : 1)
+        }
+        .padding(.top, 14)
+    }
+
+    private func toggleRow(_ title: String, icon: String, isOn: Binding<Bool>) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .foregroundStyle(.red)
+                .frame(width: 22)
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+            Spacer()
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .tint(.red)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func sliderCard(_ title: String, icon: String, value: Binding<Double>, range: ClosedRange<Double>, labels: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(title, systemImage: icon)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+            Slider(value: value, in: range)
+                .tint(.red)
+            HStack {
+                ForEach(labels, id: \.self) { label in
+                    Text(label).font(.caption2).foregroundStyle(.gray)
+                    if label != labels.last { Spacer() }
+                }
+            }
+        }
+        .padding(12)
+        .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func resetControls() {
+        aimOnFire = false
+        prioritizeHead = false
+        fineAim = false
+        quickHeal = false
+        boxESP = false
+        healthESP = false
+        nameESP = false
+        distanceESP = false
+        directionESP = false
+        markEnemies = false
+        shotInterval = 1.0
+        effectDistance = 20
+        restoreSelectedPatch()
+    }
+
+    private func applySelectedPatch() {
+        guard let item, let project = item.project, receipt == nil else {
+            if receipt != nil { actionMessage = "O patch External já está aplicado." }
+            return
+        }
+        if item.isLocked {
+            onRequestUnlock(item)
+            return
+        }
+        isWorking = true
+        Task.detached(priority: .userInitiated) {
+            do {
+                let synchronized = item.summary.schemaVersion >= 2 && item.canInspectContents
+                    ? try PatchProjectLibrary.synchronizeWorkspace(item: item)
+                    : project
+                _ = try DevicePatchService.apply(project: synchronized)
+                await MainActor.run {
+                    store.reload()
+                    isWorking = false
+                    actionMessage = "Patch External aplicado com sucesso."
+                }
+            } catch {
+                await MainActor.run {
+                    isWorking = false
+                    actionMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func restoreSelectedPatch() {
+        guard let receipt else {
+            actionMessage = "Nenhum patch External está aplicado."
+            return
+        }
+        isWorking = true
+        Task.detached(priority: .userInitiated) {
+            do {
+                let inspection = try DevicePatchService.inspectRestore(receipt: receipt)
+                if inspection.changedTargets.isEmpty {
+                    try DevicePatchService.restore(receipt: receipt)
+                    await MainActor.run {
+                        store.reload()
+                        isWorking = false
+                        actionMessage = "Dados originais restaurados."
+                    }
+                } else {
+                    await MainActor.run {
+                        isWorking = false
+                        changedRestorePaths = inspection.changedTargets.map(\.displayPath)
+                        showChangedRestoreConfirmation = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isWorking = false
+                    actionMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func restore(allowChangedTargets: Bool) {
+        guard let receipt else { return }
+        isWorking = true
+        Task.detached(priority: .userInitiated) {
+            do {
+                try DevicePatchService.restore(receipt: receipt, allowChangedTargets: allowChangedTargets)
+                await MainActor.run {
+                    store.reload()
+                    isWorking = false
+                    actionMessage = "Dados originais restaurados."
+                }
+            } catch {
+                await MainActor.run {
+                    isWorking = false
+                    actionMessage = error.localizedDescription
+                }
+            }
+        }
     }
 }
 

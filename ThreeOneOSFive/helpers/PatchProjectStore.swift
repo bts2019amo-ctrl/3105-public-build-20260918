@@ -167,6 +167,9 @@ final class PatchProjectStore: ObservableObject {
                 PatchProjectLibrary.setRemoteVersion(patch.updatedAt, for: patch.id)
                 PatchProjectLibrary.setDisplayName(patch.name, for: summary.packageID)
             }
+            PatchProjectLibrary.removeRemotePackagesNotInFeed(
+                remoteIDs: Set(feed.patches.map(\.id))
+            )
             reload()
         } catch {
             // A temporary network error must not interrupt local patch usage.

@@ -202,6 +202,31 @@ enum PatchProjectLibrary {
         UserDefaults.standard.set(names, forKey: remoteNameKey)
     }
 
+    static func removeRemotePackagesNotInFeed(
+        remoteIDs: Set<Int>,
+        fileManager: FileManager = .default
+    ) {
+        let mappings = UserDefaults.standard.dictionary(forKey: remoteDefaultsKey) as? [String: String] ?? [:]
+        let itemsByID = Dictionary(uniqueKeysWithValues: load(fileManager: fileManager).map { ($0.id, $0) })
+        for (remoteID, packageIDString) in mappings where !remoteIDs.contains(Int(remoteID) ?? -1) {
+            if let packageID = UUID(uuidString: packageIDString), let item = itemsByID[packageID] {
+                deleteFilesImmediately(for: item, fileManager: fileManager)
+            }
+        }
+        let activeMappings = mappings.filter { remoteIDs.contains(Int($0.key) ?? -1) }
+        UserDefaults.standard.set(activeMappings, forKey: remoteDefaultsKey)
+    }
+
+    static func resetAll(fileManager: FileManager = .default) throws {
+        let root = try packageRootURL(fileManager: fileManager)
+        if fileManager.fileExists(atPath: root.path) {
+            try fileManager.removeItem(at: root)
+        }
+        try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
+        [categoryDefaultsKey, featureDefaultsKey, remoteDefaultsKey, remoteVersionKey, remoteNameKey]
+            .forEach { UserDefaults.standard.removeObject(forKey: $0) }
+    }
+
     static var selectedCategory: PatchGameCategory {
         PatchGameCategory(
             rawValue: UserDefaults.standard.string(forKey: selectedCategoryKey) ?? "normal"
@@ -381,17 +406,28 @@ enum PatchProjectLibrary {
         }
     }
 
-    static func delete(_ item: PatchLibraryItem, fileManager: FileManager = .default) throws {
+    static func delete(
+        _ item: PatchLibraryItem,
+        allowApplied: Bool = false,
+        fileManager: FileManager = .default
+    ) throws {
         let backupRoot = try backupRootURL(fileManager: fileManager)
-        guard PatchTransaction.latestReceipt(
+        guard allowApplied || PatchTransaction.latestReceipt(
             projectID: item.id,
             backupRoot: backupRoot,
             fileManager: fileManager
         ) == nil else {
             throw PatchPackageError.activePatchCannotBeDeleted
         }
+        deleteFilesImmediately(for: item, fileManager: fileManager)
+    }
+
+    private static func deleteFilesImmediately(
+        for item: PatchLibraryItem,
+        fileManager: FileManager
+    ) {
         if fileManager.fileExists(atPath: item.packageURL.path) {
-            try fileManager.removeItem(at: item.packageURL)
+            try? fileManager.removeItem(at: item.packageURL)
         }
         try? PatchWorkspaceService.deleteWorkspace(projectID: item.id, fileManager: fileManager)
         try? PatchKeyStore.delete(for: item.summary)

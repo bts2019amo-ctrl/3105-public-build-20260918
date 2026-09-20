@@ -141,6 +141,7 @@ struct PatchProjectsView: View {
                         .padding(.horizontal, 14)
                         .padding(.vertical, 9)
                         .background(.ultraThinMaterial, in: Capsule())
+                        .overlay(Capsule().strokeBorder(.white.opacity(0.28), lineWidth: 0.7))
                     }
                     .padding(.top, 10)
                     .padding(.bottom, 8)
@@ -211,6 +212,7 @@ struct PatchProjectsView: View {
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .onChange(of: selectedCategory) { category in
                 PatchProjectLibrary.setSelectedCategory(category)
             }
@@ -231,10 +233,22 @@ struct PatchProjectsView: View {
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 8) {
                         AppLogo(size: 28)
-                        Text("EXTERNAL SYSTEM")
-                            .font(.subheadline.weight(.bold))
-                            .tracking(0.8)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("EXTERNAL SYSTEM")
+                                .font(.subheadline.weight(.black))
+                                .tracking(0.8)
+                            Text("PATCH CONTROL")
+                                .font(.system(size: 8, weight: .bold))
+                                .tracking(1.4)
+                                .foregroundStyle(.secondary)
+                        }
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 6, height: 6)
                     }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .liquidGlassCard(cornerRadius: 16, tint: AppTheme.accent, opacity: 0.08)
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("External System")
                 }
@@ -477,6 +491,9 @@ struct PatchProjectsView: View {
                 PatchProjectRow(item: item, language: language)
             }
             .buttonStyle(.plain)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 10)
+            .liquidGlassCard(cornerRadius: 18, tint: AppTheme.accent, opacity: 0.06)
         } else {
             VStack(alignment: .leading, spacing: 0) {
                 Button {
@@ -500,6 +517,10 @@ struct PatchProjectsView: View {
                         .padding(.bottom, 8)
                 }
             }
+            .padding(.horizontal, 10)
+            .padding(.top, 7)
+            .padding(.bottom, expandedPatchID == item.id ? 2 : 7)
+            .liquidGlassCard(cornerRadius: 18, tint: AppTheme.accent, opacity: 0.06)
         }
     }
 
@@ -880,7 +901,11 @@ private struct PatchProjectRow: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                InstalledContentKindBadge(kind: .patch, language: language)
+                HStack(spacing: 5) {
+                    InstalledContentKindBadge(kind: .patch, language: language)
+                    PatchCategoryBadge(category: PatchProjectLibrary.category(for: item), language: language)
+                    PatchFeatureBadge(feature: PatchProjectLibrary.featureCategory(for: item), title: language.text("patch.feature." + PatchProjectLibrary.featureCategory(for: item).rawValue))
+                }
                 if let author = item.project?.author, !author.isEmpty {
                     Text(language.text("patch.by_author", author))
                         .font(.caption)
@@ -923,12 +948,51 @@ private struct PatchProjectRow: View {
     }
 }
 
+private struct PatchCategoryBadge: View {
+    let category: PatchGameCategory
+    let language: AppLanguage
+
+    var body: some View {
+        Text(language.text(category == .max ? "patch.ff_max" : "patch.ff_normal"))
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(category == .max ? .purple : AppTheme.accent)
+            .padding(.horizontal, 7)
+            .frame(height: 24)
+            .background((category == .max ? Color.purple : AppTheme.accent).opacity(0.12), in: Capsule())
+    }
+}
+
+private struct PatchFeatureBadge: View {
+    let feature: PatchFeatureCategory
+    let title: String
+
+    private var icon: String {
+        switch feature {
+        case .cache: return "shippingbox.fill"
+        case .avatar: return "person.crop.circle.fill"
+        case .hologram: return "sparkles"
+        case .external: return "arrow.up.right.square.fill"
+        case .skin: return "diamond.fill"
+        }
+    }
+
+    var body: some View {
+        Label(title, systemImage: icon)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 7)
+            .frame(height: 24)
+            .background(Color.primary.opacity(0.06), in: Capsule())
+    }
+}
+
 private struct PatchActivationToggle: View {
     @Environment(\.appLanguage) private var language
     @ObservedObject var store: PatchProjectStore
     let item: PatchLibraryItem
     @State private var isWorking = false
     @State private var actionAlert: PatchStoreAlert?
+    @State private var actionPulse = false
 
     private var receipt: PatchTransactionReceipt? {
         DevicePatchService.latestReceipt(projectID: item.id)
@@ -949,6 +1013,13 @@ private struct PatchActivationToggle: View {
             }
         }
         .frame(width: 44, height: 32)
+        .scaleEffect(actionPulse ? 1.08 : 1)
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(AppTheme.accent.opacity(actionPulse ? 0.75 : 0), lineWidth: 2)
+                .blur(radius: actionPulse ? 0.2 : 0)
+        }
+        .animation(.easeOut(duration: 0.28), value: actionPulse)
         .alert(item: $actionAlert) { alert in
             Alert(
                 title: Text(language.text(alert.titleKey)),
@@ -986,6 +1057,10 @@ private struct PatchActivationToggle: View {
                 await MainActor.run {
                     store.reload()
                     isWorking = false
+                    withAnimation { actionPulse = true }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.42) {
+                        withAnimation { actionPulse = false }
+                    }
                 }
             } catch let error as PatchPackageError {
                 await MainActor.run {
@@ -1018,6 +1093,10 @@ private struct PatchActivationToggle: View {
                 await MainActor.run {
                     store.reload()
                     isWorking = false
+                    withAnimation { actionPulse = true }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.42) {
+                        withAnimation { actionPulse = false }
+                    }
                 }
             } catch let error as PatchPackageError {
                 await MainActor.run {
@@ -1123,6 +1202,7 @@ struct PatchUnlockView: View {
             }
             .navigationTitle(language.text("patch.unlock"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(language.text("common.cancel")) { dismiss() }
@@ -1336,6 +1416,7 @@ private struct PatchProjectDetailView: View {
         .listStyle(.insetGrouped)
         .navigationTitle(item?.project?.name ?? language.text("patch.title"))
         .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 if isWorking {

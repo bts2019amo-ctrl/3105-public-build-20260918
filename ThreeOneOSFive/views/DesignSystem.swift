@@ -65,6 +65,77 @@ struct AppCardBorder: View {
     }
 }
 
+struct LiquidGlassCardModifier: ViewModifier {
+    var cornerRadius: CGFloat = AppTheme.contentCardCornerRadius
+    var tint: Color = .white
+    var opacity: Double = 0.14
+
+    func body(content: Content) -> some View {
+        content
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .background(tint.opacity(opacity), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [.white.opacity(0.48), .white.opacity(0.08)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.8
+                    )
+            }
+            .shadow(color: .black.opacity(0.12), radius: 14, y: 7)
+    }
+}
+
+extension View {
+    func liquidGlassCard(
+        cornerRadius: CGFloat = AppTheme.contentCardCornerRadius,
+        tint: Color = .white,
+        opacity: Double = 0.14
+    ) -> some View {
+        modifier(LiquidGlassCardModifier(cornerRadius: cornerRadius, tint: tint, opacity: opacity))
+    }
+}
+
+struct ExternalSystemLaunchView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var glow = false
+
+    var body: some View {
+        ZStack {
+            AnimatedGlassWallpaper()
+            VStack(spacing: 18) {
+                AppLogo(size: 92)
+                    .scaleEffect(glow ? 1.04 : 0.94)
+                    .shadow(color: AppTheme.accent.opacity(0.65), radius: glow ? 28 : 12)
+                VStack(spacing: 5) {
+                    Text("EXTERNAL SYSTEM")
+                        .font(.system(size: 20, weight: .black, design: .rounded))
+                        .tracking(2.2)
+                    Text("PATCH CONTROL")
+                        .font(.caption.weight(.bold))
+                        .tracking(2.8)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(36)
+            .liquidGlassCard(cornerRadius: 34, tint: AppTheme.accent, opacity: 0.12)
+            .padding(28)
+        }
+        .ignoresSafeArea()
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 1.15).repeatForever(autoreverses: true)) {
+                glow = true
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("External System")
+    }
+}
+
 struct AnimatedGlassWallpaper: View {
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in

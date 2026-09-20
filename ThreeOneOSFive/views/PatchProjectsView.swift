@@ -146,6 +146,8 @@ struct PatchProjectsView: View {
                     .padding(.top, 10)
                     .padding(.bottom, 8)
 
+                    syncStatusBar
+
                     if selectedFeature == .external {
                         ExternalPanelView(
                             store: store,
@@ -493,6 +495,10 @@ struct PatchProjectsView: View {
                 .buttonStyle(.plain)
 
                 if expandedPatchID == item.id {
+                    PatchRemoteDetails(item: item)
+                        .padding(.leading, 40)
+                        .padding(.top, 2)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                     PatchActivationToggle(store: store, item: item)
                         .padding(.leading, 40)
                         .padding(.bottom, 8)
@@ -513,6 +519,52 @@ struct PatchProjectsView: View {
 
     private var featureTitle: String {
         language.text("patch.feature." + selectedFeature.rawValue)
+    }
+
+    private var syncStatusBar: some View {
+        Button { store.syncNow() } label: {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(syncColor)
+                    .frame(width: 7, height: 7)
+                    .shadow(color: syncColor.opacity(0.7), radius: 4)
+                Text(syncTitle)
+                    .font(.caption.weight(.semibold))
+                Spacer()
+                if let date = store.lastRemoteSyncAt {
+                    Text(date, style: .time)
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                Image(systemName: "arrow.clockwise")
+                    .font(.caption.weight(.bold))
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .liquidGlassCard(cornerRadius: 14, tint: AppTheme.accent, opacity: 0.04)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 12)
+        .padding(.bottom, 5)
+    }
+
+    private var syncTitle: String {
+        switch store.remoteSyncState {
+        case .idle: return "Aguardando sincronização"
+        case .syncing: return "Sincronizando…"
+        case .online: return "Feed atualizado"
+        case .offline: return "Sem conexão · toque para tentar"
+        }
+    }
+
+    private var syncColor: Color {
+        switch store.remoteSyncState {
+        case .online: return .green
+        case .syncing: return .orange
+        case .offline: return .red
+        case .idle: return .secondary
+        }
     }
 
     private func menuChoice(_ key: String, _ selected: Bool) -> some View {
@@ -927,6 +979,30 @@ private struct PatchProjectRow: View {
                 : "patch.rules_count",
             Int64((item.project?.rules.count ?? 0) + (item.project?.directories.count ?? 0))
         )
+    }
+}
+
+private struct PatchRemoteDetails: View {
+    let item: PatchLibraryItem
+
+    var body: some View {
+        let metadata = PatchProjectLibrary.remoteMetadata(for: item.id)
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 10) {
+                Label("v\(metadata.version)", systemImage: "arrow.triangle.2.circlepath")
+                if let checksum = metadata.checksum, !checksum.isEmpty {
+                    Text("SHA \(checksum.prefix(8))")
+                }
+            }
+            .font(.caption2.monospaced())
+            .foregroundStyle(.secondary)
+            if let changelog = metadata.changelog, !changelog.isEmpty {
+                Text(changelog)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+            }
+        }
     }
 }
 

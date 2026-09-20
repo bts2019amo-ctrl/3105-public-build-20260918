@@ -56,6 +56,9 @@ enum PatchProjectLibrary {
     private static let featureDefaultsKey = "patch.feature.category"
     private static let remoteDefaultsKey = "patch.remote.mapping"
     private static let remoteVersionKey = "patch.remote.version"
+    private static let remotePatchVersionKey = "patch.remote.patch.version"
+    private static let remoteChangelogKey = "patch.remote.changelog"
+    private static let remoteChecksumKey = "patch.remote.checksum"
     private static let remoteNameKey = "patch.remote.name"
     private static let remoteIconKey = "patch.remote.icon"
     private static let selectedCategoryKey = "patch.game.selected.category"
@@ -193,6 +196,37 @@ enum PatchProjectLibrary {
         UserDefaults.standard.set(versions, forKey: remoteVersionKey)
     }
 
+    static func setRemoteMetadata(version: Int, changelog: String?, checksum: String, for packageID: UUID) {
+        var versions = UserDefaults.standard.dictionary(forKey: remotePatchVersionKey) as? [String: NSNumber] ?? [:]
+        versions[packageID.uuidString] = NSNumber(value: version)
+        UserDefaults.standard.set(versions, forKey: remotePatchVersionKey)
+        var notes = UserDefaults.standard.dictionary(forKey: remoteChangelogKey) as? [String: String] ?? [:]
+        notes[packageID.uuidString] = changelog ?? ""
+        UserDefaults.standard.set(notes, forKey: remoteChangelogKey)
+        var checksums = UserDefaults.standard.dictionary(forKey: remoteChecksumKey) as? [String: String] ?? [:]
+        checksums[packageID.uuidString] = checksum
+        UserDefaults.standard.set(checksums, forKey: remoteChecksumKey)
+    }
+
+    static func remoteMetadata(for packageID: UUID) -> (version: Int, changelog: String?, checksum: String?) {
+        let versions = UserDefaults.standard.dictionary(forKey: remotePatchVersionKey) as? [String: NSNumber]
+        let notes = UserDefaults.standard.dictionary(forKey: remoteChangelogKey) as? [String: String]
+        let checksums = UserDefaults.standard.dictionary(forKey: remoteChecksumKey) as? [String: String]
+        return (
+            versions?[packageID.uuidString]?.intValue ?? 1,
+            notes?[packageID.uuidString],
+            checksums?[packageID.uuidString]
+        )
+    }
+
+    static func clearRemoteMetadata(for packageID: UUID) {
+        for key in [remotePatchVersionKey, remoteChangelogKey, remoteChecksumKey] {
+            var values = UserDefaults.standard.dictionary(forKey: key) as? [String: Any] ?? [:]
+            values.removeValue(forKey: packageID.uuidString)
+            UserDefaults.standard.set(values, forKey: key)
+        }
+    }
+
     static func displayName(for item: PatchLibraryItem) -> String {
         let names = UserDefaults.standard.dictionary(forKey: remoteNameKey) as? [String: String]
         let name = names?[item.id.uuidString] ?? item.project?.name ?? ""
@@ -234,6 +268,7 @@ enum PatchProjectLibrary {
                     deleteFilesImmediately(for: item, fileManager: fileManager)
                 }
                 setRemoteIconURL(nil, for: packageID)
+                clearRemoteMetadata(for: packageID)
             }
         }
         let activeMappings = mappings.filter { remoteIDs.contains(Int($0.key) ?? -1) }
@@ -246,7 +281,7 @@ enum PatchProjectLibrary {
             try fileManager.removeItem(at: root)
         }
         try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
-        [categoryDefaultsKey, featureDefaultsKey, remoteDefaultsKey, remoteVersionKey, remoteNameKey, remoteIconKey]
+        [categoryDefaultsKey, featureDefaultsKey, remoteDefaultsKey, remoteVersionKey, remotePatchVersionKey, remoteChangelogKey, remoteChecksumKey, remoteNameKey, remoteIconKey]
             .forEach { UserDefaults.standard.removeObject(forKey: $0) }
     }
 

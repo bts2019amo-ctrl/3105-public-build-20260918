@@ -1,9 +1,11 @@
 import Foundation
+import UIKit
 
 enum RemotePatchConfiguration {
     static let baseURL = URL(string: "https://patchremote-guxthetm.manus.space")!
     static let syncToken = "3105-sync-v1-9f2d7a4c"
     static let pollIntervalNanoseconds: UInt64 = 2_000_000_000
+    static let deviceIDKey = "3105.remote.device.id"
 }
 
 private struct RemoteFeedEnvelope: Decodable {
@@ -28,10 +30,23 @@ private struct RemoteFeedPatch: Decodable {
     let name: String
     let category: String
     let feature: String
+    let fileName: String
     let fileKey: String
     let fileUrl: String
+    let mimeType: String
+    let fileSize: Int
+    let version: Int
+    let changelog: String?
+    let checksumSha256: String
     let iconUrl: String?
     let updatedAt: Int64
+}
+
+enum RemoteSyncState: Equatable {
+    case idle
+    case syncing
+    case online
+    case offline
 }
 
 struct PatchStoreAlert: Identifiable {
@@ -58,6 +73,9 @@ struct PatchStoreAlert: Identifiable {
 final class PatchProjectStore: ObservableObject {
     @Published private(set) var items: [PatchLibraryItem] = []
     @Published private(set) var isBusy = false
+    @Published private(set) var remoteSyncState: RemoteSyncState = .idle
+    @Published private(set) var lastRemoteSyncAt: Date?
+    @Published private(set) var lastRemoteSyncError: String?
     @Published var passwordRequest: PatchPasswordRequest?
     @Published var alert: PatchStoreAlert?
     @Published var unlockErrorKey: String?
@@ -97,6 +115,9 @@ final class PatchProjectStore: ObservableObject {
         stopRemoteSync()
         items = []
         isBusy = false
+        remoteSyncState = .idle
+        lastRemoteSyncAt = nil
+        lastRemoteSyncError = nil
         passwordRequest = nil
         alert = nil
         unlockErrorKey = nil
@@ -121,8 +142,13 @@ final class PatchProjectStore: ObservableObject {
         remoteSyncTask = nil
     }
 
+    func syncNow() {
+        Task { await synchronizeRemoteFeed() }
+    }
+
     private func synchronizeRemoteFeed() async {
         guard !isBusy else { return }
+        remoteSyncState = .syncing
         do {
             var components = URLComponents(
                 url: RemotePatchConfiguration.baseURL.appendingPathComponent("api/trpc/patches.feed"),
@@ -141,6 +167,7 @@ final class PatchProjectStore: ObservableObject {
                   (200..<300).contains(response.statusCode) else { return }
             let envelope = try JSONDecoder().decode(RemoteFeedEnvelope.self, from: data)
             let feed = envelope.result.data.json
+            await sendRemoteHeartbeat()
 
             var reservedPackageIDs = Set(items.map(\.id))
             var claimedPackageIDs = Set<UUID>()
@@ -181,6 +208,12 @@ final class PatchProjectStore: ObservableObject {
                 PatchProjectLibrary.setRemoteVersion(patch.updatedAt, for: patch.id)
                 PatchProjectLibrary.setDisplayName(patch.name, for: summary.packageID)
                 PatchProjectLibrary.setRemoteIconURL(patch.iconUrl, for: summary.packageID)
+                PatchProjectLibrary.setRemoteMetadata(
+                    version: patch.version,
+                    changelog: patch.changelog,
+                    checksum: patch.checksumSha256,
+                    for: summary.packageID
+                )
                 reservedPackageIDs.insert(summary.packageID)
                 claimedPackageIDs.insert(summary.packageID)
             }
@@ -188,9 +221,35 @@ final class PatchProjectStore: ObservableObject {
                 remoteIDs: Set(feed.patches.map(\.id))
             )
             reload()
+            remoteSyncState = .online
+            lastRemoteSyncAt = Date()
+            lastRemoteSyncError = nil
         } catch {
-            // A temporary network error must not interrupt local patch usage.
+            remoteSyncState = .offline
+            lastRemoteSyncError = error.localizedDescription
         }
+    }
+
+    private func sendRemoteHeartbeat() async {
+        let deviceID: String = {
+            if let saved = UserDefaults.standard.string(forKey: RemotePatchConfiguration.deviceIDKey) { return saved }
+            let value = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+            UserDefaults.standard.set(value, forKey: RemotePatchConfiguration.deviceIDKey)
+            return value
+        }()
+        guard let url = URL(string: "api/trpc/patches.heartbeat", relativeTo: RemotePatchConfiguration.baseURL)?.absoluteURL else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let payload: [String: Any] = ["json": [
+            "syncToken": RemotePatchConfiguration.syncToken,
+            "deviceId": deviceID,
+            "model": UIDevice.current.model,
+            "osVersion": UIDevice.current.systemVersion,
+            "appVersion": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
+        ]]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+        _ = try? await URLSession.shared.data(for: request)
     }
 
     private func finishInitialLoad(_ loadedItems: [PatchLibraryItem]) {

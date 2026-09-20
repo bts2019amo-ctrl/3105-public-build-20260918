@@ -231,26 +231,7 @@ struct PatchProjectsView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    HStack(spacing: 8) {
-                        AppLogo(size: 28)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("EXTERNAL SYSTEM")
-                                .font(.subheadline.weight(.black))
-                                .tracking(0.8)
-                            Text("PATCH CONTROL")
-                                .font(.system(size: 8, weight: .bold))
-                                .tracking(1.4)
-                                .foregroundStyle(.secondary)
-                        }
-                        Circle()
-                            .fill(Color.green)
-                            .frame(width: 6, height: 6)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .liquidGlassCard(cornerRadius: 16, tint: AppTheme.accent, opacity: 0.08)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("External System")
+                    ParallaxBrandHeader()
                 }
                 AppUtilityToolbar(
                     language: language,
@@ -497,7 +478,7 @@ struct PatchProjectsView: View {
         } else {
             VStack(alignment: .leading, spacing: 0) {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.22)) {
+                    withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) {
                         expandedPatchID = expandedPatchID == item.id ? nil : item.id
                     }
                 } label: {
@@ -515,6 +496,12 @@ struct PatchProjectsView: View {
                     PatchActivationToggle(store: store, item: item)
                         .padding(.leading, 40)
                         .padding(.bottom, 8)
+                        .transition(
+                            .asymmetric(
+                                insertion: .scale(scale: 0.92, anchor: .top).combined(with: .opacity),
+                                removal: .scale(scale: 0.96, anchor: .top).combined(with: .opacity)
+                            )
+                        )
                 }
             }
             .padding(.horizontal, 10)

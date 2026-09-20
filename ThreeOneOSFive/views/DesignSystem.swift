@@ -27,7 +27,15 @@ enum AppAccentPalette: String, CaseIterable, Identifiable {
 
 enum AppTheme {
     static let accentPaletteStorageKey = "theme.accent.palette"
+    static let glassOpacityStorageKey = "theme.glass.opacity"
+    static let wallpaperBlurStorageKey = "theme.wallpaper.blur"
+    static let animationSpeedStorageKey = "theme.animation.speed"
+    static let saturationStorageKey = "theme.saturation"
     static let defaultAccentPalette = AppAccentPalette.orange.rawValue
+    static let defaultGlassOpacity = 0.14
+    static let defaultWallpaperBlur = 26.0
+    static let defaultAnimationSpeed = 1.0
+    static let defaultSaturation = 1.0
 
     static var accent: Color {
         AppAccentPalette(
@@ -35,6 +43,10 @@ enum AppTheme {
                 ?? defaultAccentPalette
         )?.color ?? AppAccentPalette.orange.color
     }
+    static var glassOpacity: Double { UserDefaults.standard.object(forKey: glassOpacityStorageKey) as? Double ?? defaultGlassOpacity }
+    static var wallpaperBlur: CGFloat { CGFloat(UserDefaults.standard.object(forKey: wallpaperBlurStorageKey) as? Double ?? defaultWallpaperBlur) }
+    static var animationSpeed: Double { UserDefaults.standard.object(forKey: animationSpeedStorageKey) as? Double ?? defaultAnimationSpeed }
+    static var saturation: Double { UserDefaults.standard.object(forKey: saturationStorageKey) as? Double ?? defaultSaturation }
     static let pageBackground = Color(uiColor: .systemBackground)
     static let consoleBackground = Color(uiColor: .secondarySystemBackground)
     static let pageInset: CGFloat = 16
@@ -73,7 +85,7 @@ struct LiquidGlassCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .background(tint.opacity(opacity), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .background(tint.opacity(opacity * (AppTheme.glassOpacity / AppTheme.defaultGlassOpacity)), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .strokeBorder(
@@ -83,6 +95,15 @@ struct LiquidGlassCardModifier: ViewModifier {
                             endPoint: .bottomTrailing
                         ),
                         lineWidth: 0.8
+                    )
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius - 1, style: .continuous)
+                    .stroke(.white.opacity(0.14), lineWidth: 3)
+                    .blur(radius: 2)
+                    .mask(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(LinearGradient(colors: [.white, .clear], startPoint: .topLeading, endPoint: .bottomTrailing))
                     )
             }
             .shadow(color: .black.opacity(0.12), radius: 14, y: 7)
@@ -136,10 +157,43 @@ struct ExternalSystemLaunchView: View {
     }
 }
 
+struct ParallaxBrandHeader: View {
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+            let phase = context.date.timeIntervalSinceReferenceDate * AppTheme.animationSpeed
+            HStack(spacing: 8) {
+                AppLogo(size: 28)
+                    .offset(x: sin(phase * 0.8) * 1.6, y: cos(phase * 0.7) * 0.8)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("EXTERNAL SYSTEM")
+                        .font(.subheadline.weight(.black))
+                        .tracking(0.8)
+                        .offset(x: cos(phase * 0.55) * 0.8)
+                    Text("PATCH CONTROL")
+                        .font(.system(size: 8, weight: .bold))
+                        .tracking(1.4)
+                        .foregroundStyle(.secondary)
+                        .offset(x: sin(phase * 0.45) * 0.5)
+                }
+                Circle()
+                    .fill(Color.green)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: .green.opacity(0.7), radius: 4)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .liquidGlassCard(cornerRadius: 16, tint: AppTheme.accent, opacity: 0.08)
+        }
+        .frame(height: 42)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("External System")
+    }
+}
+
 struct AnimatedGlassWallpaper: View {
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
-            let phase = context.date.timeIntervalSinceReferenceDate
+            let phase = context.date.timeIntervalSinceReferenceDate * AppTheme.animationSpeed
             ZStack {
                 LinearGradient(
                     colors: [
@@ -170,7 +224,8 @@ struct AnimatedGlassWallpaper: View {
                     y: cos(phase * 0.30 + 1) * 110
                 )
             }
-            .blur(radius: 26)
+            .blur(radius: AppTheme.wallpaperBlur)
+            .saturation(AppTheme.saturation)
         }
         .allowsHitTesting(false)
     }

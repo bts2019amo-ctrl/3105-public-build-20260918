@@ -7,6 +7,14 @@ struct SettingsView: View {
     @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
     @AppStorage(AppTheme.accentPaletteStorageKey)
     private var accentPalette = AppTheme.defaultAccentPalette
+    @AppStorage(AppTheme.glassOpacityStorageKey)
+    private var glassOpacity = AppTheme.defaultGlassOpacity
+    @AppStorage(AppTheme.wallpaperBlurStorageKey)
+    private var wallpaperBlur = AppTheme.defaultWallpaperBlur
+    @AppStorage(AppTheme.animationSpeedStorageKey)
+    private var animationSpeed = AppTheme.defaultAnimationSpeed
+    @AppStorage(AppTheme.saturationStorageKey)
+    private var saturation = AppTheme.defaultSaturation
 
     private var selectedPalette: AppAccentPalette {
         AppAccentPalette(rawValue: accentPalette) ?? .orange
@@ -31,6 +39,7 @@ struct SettingsView: View {
                         profileCard
                         languageCard
                         paletteCard
+                        appearanceEditorCard
                         deviceCard
                         supportCard
                     }
@@ -128,6 +137,45 @@ struct SettingsView: View {
         }
         .padding(18)
         .glassCard()
+    }
+
+    private var appearanceEditorCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            settingsCardHeader("Aparência avançada", systemImage: "wand.and.stars")
+            appearanceSlider("Transparência do vidro", value: $glassOpacity, range: 0.05...0.30, format: "%.0f%%")
+            appearanceSlider("Desfoque do fundo", value: $wallpaperBlur, range: 8...46, format: "%.0f")
+            appearanceSlider("Velocidade da animação", value: $animationSpeed, range: 0.4...2.0, format: "%.1fx")
+            appearanceSlider("Saturação", value: $saturation, range: 0.6...1.8, format: "%.1f")
+            Button("Restaurar aparência padrão") {
+                glassOpacity = AppTheme.defaultGlassOpacity
+                wallpaperBlur = AppTheme.defaultWallpaperBlur
+                animationSpeed = AppTheme.defaultAnimationSpeed
+                saturation = AppTheme.defaultSaturation
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(AppTheme.accent)
+        }
+        .padding(18)
+        .glassCard()
+    }
+
+    private func appearanceSlider(
+        _ title: String,
+        value: Binding<Double>,
+        range: ClosedRange<Double>,
+        format: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(title).font(.subheadline)
+                Spacer()
+                Text(String(format: format, value.wrappedValue))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            Slider(value: value, in: range)
+                .tint(AppTheme.accent)
+        }
     }
 
     private var deviceCard: some View {

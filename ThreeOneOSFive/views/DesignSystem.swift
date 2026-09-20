@@ -143,9 +143,9 @@ struct AnimatedGlassWallpaper: View {
             ZStack {
                 LinearGradient(
                     colors: [
-                        AppTheme.accent.opacity(0.28),
-                        Color(uiColor: .systemBackground).opacity(0.92),
-                        AppTheme.accent.opacity(0.10)
+                        AppTheme.accent.opacity(0.42),
+                        Color(uiColor: .systemBackground).opacity(0.62),
+                        AppTheme.accent.opacity(0.22)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -153,15 +153,15 @@ struct AnimatedGlassWallpaper: View {
 
                 blob(
                     color: AppTheme.accent.opacity(0.48),
-                    size: 300,
-                    x: sin(phase * 0.34) * 100,
-                    y: cos(phase * 0.28) * 130
+                    size: 340,
+                    x: sin(phase * 0.34) * 125,
+                    y: cos(phase * 0.28) * 155
                 )
                 blob(
-                    color: AppTheme.accent.opacity(0.24),
-                    size: 240,
-                    x: cos(phase * 0.24) * 130,
-                    y: sin(phase * 0.38) * 150
+                    color: AppTheme.accent.opacity(0.36),
+                    size: 280,
+                    x: cos(phase * 0.24) * 155,
+                    y: sin(phase * 0.38) * 175
                 )
                 blob(
                     color: Color.white.opacity(0.20),
@@ -170,8 +170,7 @@ struct AnimatedGlassWallpaper: View {
                     y: cos(phase * 0.30 + 1) * 110
                 )
             }
-            .blur(radius: 34)
-            .overlay(.ultraThinMaterial)
+            .blur(radius: 26)
         }
         .allowsHitTesting(false)
     }

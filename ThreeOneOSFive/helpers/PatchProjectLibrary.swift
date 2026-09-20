@@ -195,7 +195,9 @@ enum PatchProjectLibrary {
 
     static func displayName(for item: PatchLibraryItem) -> String {
         let names = UserDefaults.standard.dictionary(forKey: remoteNameKey) as? [String: String]
-        return names?[item.id.uuidString] ?? item.project?.name ?? ""
+        let name = names?[item.id.uuidString] ?? item.project?.name ?? ""
+        guard name.lowercased().hasSuffix(".3105") else { return name }
+        return String(name.dropLast(5))
     }
 
     static func setDisplayName(_ name: String, for packageID: UUID) {

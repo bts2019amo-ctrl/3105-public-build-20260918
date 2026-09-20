@@ -901,11 +901,6 @@ private struct PatchProjectRow: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                HStack(spacing: 5) {
-                    InstalledContentKindBadge(kind: .patch, language: language)
-                    PatchCategoryBadge(category: PatchProjectLibrary.category(for: item), language: language)
-                    PatchFeatureBadge(feature: PatchProjectLibrary.featureCategory(for: item), title: language.text("patch.feature." + PatchProjectLibrary.featureCategory(for: item).rawValue))
-                }
                 if let author = item.project?.author, !author.isEmpty {
                     Text(language.text("patch.by_author", author))
                         .font(.caption)
@@ -945,44 +940,6 @@ private struct PatchProjectRow: View {
                 : "patch.rules_count",
             Int64((item.project?.rules.count ?? 0) + (item.project?.directories.count ?? 0))
         )
-    }
-}
-
-private struct PatchCategoryBadge: View {
-    let category: PatchGameCategory
-    let language: AppLanguage
-
-    var body: some View {
-        Text(language.text(category == .max ? "patch.ff_max" : "patch.ff_normal"))
-            .font(.caption2.weight(.bold))
-            .foregroundStyle(category == .max ? .purple : AppTheme.accent)
-            .padding(.horizontal, 7)
-            .frame(height: 24)
-            .background((category == .max ? Color.purple : AppTheme.accent).opacity(0.12), in: Capsule())
-    }
-}
-
-private struct PatchFeatureBadge: View {
-    let feature: PatchFeatureCategory
-    let title: String
-
-    private var icon: String {
-        switch feature {
-        case .cache: return "shippingbox.fill"
-        case .avatar: return "person.crop.circle.fill"
-        case .hologram: return "sparkles"
-        case .external: return "arrow.up.right.square.fill"
-        case .skin: return "diamond.fill"
-        }
-    }
-
-    var body: some View {
-        Label(title, systemImage: icon)
-            .font(.caption2.weight(.semibold))
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 7)
-            .frame(height: 24)
-            .background(Color.primary.opacity(0.06), in: Capsule())
     }
 }
 

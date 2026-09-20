@@ -79,7 +79,8 @@ struct ContentView: View {
                     .tabItem {
                         CompactTabLabel(
                             title: language.text(section.titleKey),
-                            systemImage: section.systemImage
+                            systemImage: section.systemImage,
+                            isLiquidGlass: section == .installed
                         )
                     }
                     .tag(section.rawValue)
@@ -96,7 +97,15 @@ struct ContentView: View {
                             tabNavigation.select(section.rawValue)
                         }
                     } label: {
-                        Label(language.text(section.titleKey), systemImage: section.systemImage)
+                        HStack(spacing: 10) {
+                            if section == .installed {
+                                InstalledLiquidGlassIcon()
+                            } else {
+                                Image(systemName: section.systemImage)
+                                    .frame(width: 28)
+                            }
+                            Text(language.text(section.titleKey))
+                        }
                             .fontWeight(section.rawValue == tabNavigation.selectedTab ? .semibold : .regular)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
@@ -205,19 +214,51 @@ struct ContentView: View {
 private struct CompactTabLabel: View {
     let title: String
     let systemImage: String
+    let isLiquidGlass: Bool
 
     @ViewBuilder
     var body: some View {
-        if let image = UIImage(
-            systemName: systemImage,
-            withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)
-        )?.withRenderingMode(.alwaysTemplate) {
-            Image(uiImage: image)
+        if isLiquidGlass {
+            InstalledLiquidGlassIcon()
         } else {
-            Image(systemName: systemImage)
-                .font(.system(size: 17, weight: .medium))
+            if let image = UIImage(
+                systemName: systemImage,
+                withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)
+            )?.withRenderingMode(.alwaysTemplate) {
+                Image(uiImage: image)
+            } else {
+                Image(systemName: systemImage)
+                    .font(.system(size: 17, weight: .medium))
+            }
         }
         Text(title)
+    }
+}
+
+private struct InstalledLiquidGlassIcon: View {
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(.ultraThinMaterial)
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(AppTheme.accent.opacity(0.10))
+            Image(systemName: "tray.full.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(AppTheme.accent)
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [.white.opacity(0.65), AppTheme.accent.opacity(0.24), .clear],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.9
+                )
+        }
+        .frame(width: 29, height: 29)
+        .background(Color.clear)
+        .shadow(color: AppTheme.accent.opacity(0.18), radius: 6, y: 2)
+        .accessibilityHidden(true)
     }
 }
 

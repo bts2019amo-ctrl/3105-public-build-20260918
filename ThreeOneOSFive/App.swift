@@ -14,7 +14,6 @@ struct ThreeOneOSFiveApp: App {
     @AppStorage(AppTheme.accentPaletteStorageKey)
     private var accentPalette = AppTheme.defaultAccentPalette
     @State private var showOnboarding = false
-    @State private var showLaunchScreen = true
     @State private var showAttribution = false
     @State private var updateOffer: AppUpdateChecker.Offer?
     @Environment(\.scenePhase) private var scenePhase
@@ -75,11 +74,6 @@ struct ThreeOneOSFiveApp: App {
                     .zIndex(1)
                 }
 
-                if showLaunchScreen {
-                    ExternalSystemLaunchView()
-                        .transition(.opacity)
-                        .zIndex(10)
-                }
             }
             .displayIdentityAttribution(isPresented: $showAttribution, enabled: keySession.isAuthenticated && !showOnboarding)
             .sheet(isPresented: $showAttribution) {
@@ -98,11 +92,6 @@ struct ThreeOneOSFiveApp: App {
                 )
             }
             .onAppear {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.15) {
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.35)) {
-                        showLaunchScreen = false
-                    }
-                }
                 if keySession.isAuthenticated && !showOnboarding {
                     patchStore.activate()
                     patchStore.startRemoteSync()

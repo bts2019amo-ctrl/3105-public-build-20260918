@@ -495,10 +495,6 @@ struct PatchProjectsView: View {
                 .buttonStyle(.plain)
 
                 if expandedPatchID == item.id {
-                    PatchRemoteDetails(item: item)
-                        .padding(.leading, 40)
-                        .padding(.top, 2)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
                     PatchActivationToggle(store: store, item: item)
                         .padding(.leading, 40)
                         .padding(.bottom, 8)
@@ -979,30 +975,6 @@ private struct PatchProjectRow: View {
                 : "patch.rules_count",
             Int64((item.project?.rules.count ?? 0) + (item.project?.directories.count ?? 0))
         )
-    }
-}
-
-private struct PatchRemoteDetails: View {
-    let item: PatchLibraryItem
-
-    var body: some View {
-        let metadata = PatchProjectLibrary.remoteMetadata(for: item.id)
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 10) {
-                Label("v\(metadata.version)", systemImage: "arrow.triangle.2.circlepath")
-                if let checksum = metadata.checksum, !checksum.isEmpty {
-                    Text("SHA \(checksum.prefix(8))")
-                }
-            }
-            .font(.caption2.monospaced())
-            .foregroundStyle(.secondary)
-            if let changelog = metadata.changelog, !changelog.isEmpty {
-                Text(changelog)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-            }
-        }
     }
 }
 

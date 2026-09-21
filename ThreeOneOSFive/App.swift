@@ -412,88 +412,74 @@ struct IOSKeyLoginView: View {
     @State private var key = ""
 
     var body: some View {
-        GeometryReader { geometry in
-            let isLandscape = geometry.size.width > geometry.size.height
-            ZStack {
-                AnimatedGlassWallpaper()
-                    .ignoresSafeArea()
+        ZStack {
+            AnimatedGlassWallpaper()
+                .ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: isLandscape ? 10 : 14) {
-                        HStack(spacing: 10) {
-                            AppLogo(size: isLandscape ? 42 : 52)
-                                .shadow(color: AppTheme.accent.opacity(0.32), radius: 14)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("EXTERNAL SYSTEM")
-                                    .font(.headline.weight(.bold))
-                                    .tracking(1.1)
-                                Text("Acesso protegido")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer(minLength: 0)
-                        }
-
-                        VStack(alignment: .leading, spacing: isLandscape ? 8 : 11) {
-                            Text("Digite sua chave iOS para carregar os patches remotamente.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            VStack(alignment: .leading, spacing: 7) {
-                                Text("CHAVE IOS")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(AppTheme.accent)
-                                    .tracking(1.1)
-                                TextField("PROXY-SYSTEM-...", text: $key)
-                                    .textInputAutocapitalization(.characters)
-                                    .autocorrectionDisabled()
-                                    .textFieldStyle(.plain)
-                                    .padding(.horizontal, 13)
-                                    .padding(.vertical, isLandscape ? 10 : 12)
-                                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppTheme.accent.opacity(0.28)))
-                            }
-
-                            if let error = session.errorMessage {
-                                Label(error, systemImage: "exclamationmark.triangle.fill")
-                                    .font(.footnote)
-                                    .foregroundStyle(.red)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-
-                            Button {
-                                session.submit(key)
-                            } label: {
-                                Group {
-                                    if session.isChecking {
-                                        ProgressView().tint(.white)
-                                    } else {
-                                        Text("Validar e entrar")
-                                            .font(.headline.weight(.semibold))
-                                    }
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, isLandscape ? 11 : 13)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(AppTheme.accent)
-                            .disabled(session.isChecking)
-
-                            Text("Os patches não ficam dentro da IPA. Eles só aparecem depois da validação da chave.")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                                .frame(maxWidth: .infinity)
-                        }
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 22) {
+                    Spacer(minLength: 44)
+                    AppLogo(size: 76)
+                        .shadow(color: AppTheme.accent.opacity(0.35), radius: 22)
+                    Text("EXTERNAL SYSTEM")
+                        .font(.headline.weight(.bold))
+                        .tracking(1.4)
+                        .foregroundStyle(.primary)
+                    VStack(spacing: 8) {
+                        Text("Acesso protegido")
+                            .font(.system(size: 34, weight: .bold, design: .rounded))
+                        Text("Digite sua chave iOS para carregar os patches remotamente.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                     }
-                    .padding(isLandscape ? 18 : 22)
-                    .frame(maxWidth: 540)
-                    .liquidGlassCard(cornerRadius: 24, tint: AppTheme.accent, opacity: 0.08)
-                    .padding(.horizontal, isLandscape ? 28 : 20)
-                    .padding(.vertical, isLandscape ? 12 : 28)
-                    .frame(maxWidth: .infinity)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("CHAVE IOS")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(AppTheme.accent)
+                            .tracking(1.2)
+                        TextField("PROXY-SYSTEM-...", text: $key)
+                            .textInputAutocapitalization(.characters)
+                            .autocorrectionDisabled()
+                            .textFieldStyle(.plain)
+                            .padding(16)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 17).stroke(AppTheme.accent.opacity(0.28)))
+                    }
+
+                    if let error = session.errorMessage {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    Button {
+                        session.submit(key)
+                    } label: {
+                        Group {
+                            if session.isChecking {
+                                ProgressView().tint(.white)
+                            } else {
+                                Text("Validar e entrar")
+                                    .font(.headline.weight(.semibold))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(AppTheme.accent)
+                    .disabled(session.isChecking)
+
+                    Text("Os patches não ficam dentro da IPA. Eles só aparecem depois da validação da chave.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                 }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 34)
             }
         }
         .tint(AppTheme.accent)

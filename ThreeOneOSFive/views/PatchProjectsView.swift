@@ -127,9 +127,16 @@ struct PatchProjectsView: View {
                     } else {
                         if horizontalSizeClass == .regular {
                             ScrollView(showsIndicators: false) {
-                                LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 12)], spacing: 12) {
-                                    ForEach(selectedCategoryItems) { item in
-                                        itemRow(item)
+                                VStack(alignment: .leading, spacing: 12) {
+                                    sectionSummary
+                                    if selectedCategoryItems.isEmpty {
+                                        emptyState
+                                    } else {
+                                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 12)], spacing: 12) {
+                                            ForEach(selectedCategoryItems) { item in
+                                                itemRow(item)
+                                            }
+                                        }
                                     }
                                 }
                                 .padding(.horizontal, 12)
@@ -143,16 +150,16 @@ struct PatchProjectsView: View {
                         } else if !hasLocalContent {
                             emptyState
                                 .listRowSeparator(.hidden)
-                        } else {
+                            } else {
                             if !selectedCategoryItems.isEmpty {
-                                Section(language.text(
-                                    selectedCategory == .max ? "patch.ff_max" : "patch.ff_normal"
-                                )) {
+                                Section {
                                     ForEach(selectedCategoryItems) { item in
                                         itemRow(item)
                                             .listRowBackground(Color.clear)
                                             .listRowSeparator(.hidden)
                                     }
+                                } header: {
+                                    sectionSummary
                                 }
                             }
                         }
@@ -497,6 +504,28 @@ struct PatchProjectsView: View {
         language.text("patch.feature." + selectedFeature.rawValue)
     }
 
+    private var sectionSummary: some View {
+        HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(language.text(selectedCategory == .max ? "patch.ff_max" : "patch.ff_normal"))
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.primary)
+                Text(featureTitle)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text("\(selectedCategoryItems.count)")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(.primary)
+                .frame(minWidth: 28, minHeight: 28)
+                .background(Color.white.opacity(0.1), in: Circle())
+                .accessibilityLabel("\(selectedCategoryItems.count) patches")
+        }
+        .padding(.horizontal, 4)
+        .padding(.vertical, 2)
+    }
+
     private var categorySegmentedControl: some View {
         HStack(spacing: 3) {
             categoryButton(.normal, titleKey: "patch.ff_normal")
@@ -512,7 +541,7 @@ struct PatchProjectsView: View {
             Text(language.text(titleKey))
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundStyle(selectedCategory == category ? .black : .secondary)
-                .frame(maxWidth: .infinity)
+                .frame(minWidth: 82, maxWidth: .infinity)
                 .padding(.vertical, 8)
                 .background(selectedCategory == category ? Color.white : .clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
         }
@@ -937,9 +966,10 @@ private struct PatchProjectRow: View {
     let language: AppLanguage
 
     var body: some View {
+        let isApplied = DevicePatchService.latestReceipt(projectID: item.id) != nil
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(DevicePatchService.latestReceipt(projectID: item.id) != nil ? Color.green : Color.clear)
+                .fill(isApplied ? Color.green : Color.clear)
                 .frame(width: 3)
             if PatchProjectLibrary.featureCategory(for: item) == .skin,
                let iconURL = PatchProjectLibrary.remoteIconURL(for: item.id) {
@@ -968,19 +998,35 @@ private struct PatchProjectRow: View {
                 Text(rowDetail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Text(language.text("patch.feature." + PatchProjectLibrary.featureCategory(for: item).rawValue))
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .foregroundStyle(AppTheme.accent)
             }
             Spacer(minLength: 4)
-            if item.summary.isPasswordProtected {
-                Image(systemName: "key.fill")
+            VStack(alignment: .trailing, spacing: 6) {
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(isApplied ? Color.green : Color.white.opacity(0.32))
+                        .frame(width: 6, height: 6)
+                    Text(isApplied ? "ATIVO" : "PRONTO")
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .foregroundStyle(isApplied ? .green : .secondary)
+                }
+                if item.summary.isPasswordProtected || item.project?.isPrivate == true {
+                    HStack(spacing: 6) {
+                        if item.summary.isPasswordProtected {
+                            Image(systemName: "key.fill")
+                                .accessibilityLabel(language.text("patch.password_protected"))
+                        }
+                        if item.project?.isPrivate == true {
+                            Image(systemName: "eye.slash.fill")
+                                .foregroundStyle(AppTheme.accent)
+                                .accessibilityLabel(language.text("patch.private"))
+                        }
+                    }
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .accessibilityLabel(language.text("patch.password_protected"))
-            }
-            if item.project?.isPrivate == true {
-                Image(systemName: "eye.slash.fill")
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.accent)
-                    .accessibilityLabel(language.text("patch.private"))
+                }
             }
         }
         .padding(.vertical, 4)

@@ -16,6 +16,7 @@ private enum WallpaperPackagePickerPolicy {
 struct PatchProjectsView: View {
     @Environment(\.appLanguage) private var language
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @EnvironmentObject private var draftCoordinator: PatchDraftCoordinator
     @EnvironmentObject private var store: PatchProjectStore
     @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
@@ -105,44 +106,11 @@ struct PatchProjectsView: View {
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    Menu {
-                        Section(language.text("patch.category")) {
-                            Button { selectedCategory = .normal } label: {
-                                menuChoice("patch.ff_normal", selectedCategory == .normal)
-                            }
-                            Button { selectedCategory = .max } label: {
-                                menuChoice("patch.ff_max", selectedCategory == .max)
-                            }
-                        }
-                        Section(language.text("patch.feature")) {
-                            Button { selectedFeature = .cache } label: {
-                                menuChoice("patch.feature.cache", selectedFeature == .cache)
-                            }
-                            Button { selectedFeature = .avatar } label: {
-                                menuChoice("patch.feature.avatar", selectedFeature == .avatar)
-                            }
-                            Button { selectedFeature = .hologram } label: {
-                                menuChoice("patch.feature.hologram", selectedFeature == .hologram)
-                            }
-                            Button { selectedFeature = .external } label: {
-                                menuChoice("patch.feature.external", selectedFeature == .external)
-                            }
-                            Button { selectedFeature = .skin } label: {
-                                menuChoice("patch.feature.skin", selectedFeature == .skin)
-                            }
-                        }
-                    } label: {
-                        Label(
-                            "\(language.text(selectedCategory == .max ? "patch.ff_max" : "patch.ff_normal")) · \(featureTitle)",
-                            systemImage: "square.grid.2x2.fill"
-                        )
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppTheme.accent)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 9)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .overlay(Capsule().strokeBorder(.white.opacity(0.28), lineWidth: 0.7))
+                    HStack(spacing: 10) {
+                        categorySegmentedControl
+                        featureMenu
                     }
+                    .padding(.horizontal, 12)
                     .padding(.top, 10)
                     .padding(.bottom, 8)
 
@@ -157,7 +125,18 @@ struct PatchProjectsView: View {
                         .padding(.horizontal, 12)
                         .padding(.bottom, 12)
                     } else {
-                        List {
+                        if horizontalSizeClass == .regular {
+                            ScrollView(showsIndicators: false) {
+                                LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 12)], spacing: 12) {
+                                    ForEach(selectedCategoryItems) { item in
+                                        itemRow(item)
+                                    }
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.bottom, 20)
+                            }
+                        } else {
+                            List {
                         if !hasLocalContent && (store.isBusy || isImportingWallpapers) {
                             loadingState
                                 .listRowSeparator(.hidden)
@@ -209,6 +188,7 @@ struct PatchProjectsView: View {
                         .listStyle(.insetGrouped)
                         .scrollContentBackground(.hidden)
                         .background(Color.clear)
+                        }
                     }
                 }
             }
@@ -515,6 +495,46 @@ struct PatchProjectsView: View {
 
     private var featureTitle: String {
         language.text("patch.feature." + selectedFeature.rawValue)
+    }
+
+    private var categorySegmentedControl: some View {
+        HStack(spacing: 3) {
+            categoryButton(.normal, titleKey: "patch.ff_normal")
+            categoryButton(.max, titleKey: "patch.ff_max")
+        }
+        .padding(3)
+        .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.1), lineWidth: 0.7))
+    }
+
+    private func categoryButton(_ category: PatchGameCategory, titleKey: String) -> some View {
+        Button { selectedCategory = category } label: {
+            Text(language.text(titleKey))
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundStyle(selectedCategory == category ? .black : .secondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(selectedCategory == category ? Color.white : .clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var featureMenu: some View {
+        Menu {
+            Button { selectedFeature = .cache } label: { menuChoice("patch.feature.cache", selectedFeature == .cache) }
+            Button { selectedFeature = .avatar } label: { menuChoice("patch.feature.avatar", selectedFeature == .avatar) }
+            Button { selectedFeature = .hologram } label: { menuChoice("patch.feature.hologram", selectedFeature == .hologram) }
+            Button { selectedFeature = .external } label: { menuChoice("patch.feature.external", selectedFeature == .external) }
+            Button { selectedFeature = .skin } label: { menuChoice("patch.feature.skin", selectedFeature == .skin) }
+        } label: {
+            Label(featureTitle, systemImage: "slider.horizontal.3")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 9)
+                .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.1), lineWidth: 0.7))
+        }
     }
 
     private var syncStatusBar: some View {
@@ -918,6 +938,9 @@ private struct PatchProjectRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(DevicePatchService.latestReceipt(projectID: item.id) != nil ? Color.green : Color.clear)
+                .frame(width: 3)
             if PatchProjectLibrary.featureCategory(for: item) == .skin,
                let iconURL = PatchProjectLibrary.remoteIconURL(for: item.id) {
                 AsyncImage(url: iconURL) { phase in
@@ -946,7 +969,7 @@ private struct PatchProjectRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Spacer()
+            Spacer(minLength: 4)
             if item.summary.isPasswordProtected {
                 Image(systemName: "key.fill")
                     .font(.caption)

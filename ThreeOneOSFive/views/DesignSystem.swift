@@ -47,8 +47,8 @@ enum AppTheme {
     static var wallpaperBlur: CGFloat { CGFloat(UserDefaults.standard.object(forKey: wallpaperBlurStorageKey) as? Double ?? defaultWallpaperBlur) }
     static var animationSpeed: Double { UserDefaults.standard.object(forKey: animationSpeedStorageKey) as? Double ?? defaultAnimationSpeed }
     static var saturation: Double { UserDefaults.standard.object(forKey: saturationStorageKey) as? Double ?? defaultSaturation }
-    static let pageBackground = Color(uiColor: .systemBackground)
-    static let consoleBackground = Color(uiColor: .secondarySystemBackground)
+    static let pageBackground = Color.black
+    static let consoleBackground = Color(red: 0.075, green: 0.075, blue: 0.09)
     static let pageInset: CGFloat = 16
     static let rowIconSize: CGFloat = 17
     static let rowIconFrame: CGFloat = 28
@@ -58,7 +58,7 @@ enum AppTheme {
     static let appIconSize: CGFloat = 32
     static let emptyIconSize: CGFloat = 30
     static let selectionIconSize: CGFloat = 18
-    static let contentCardCornerRadius: CGFloat = 20
+    static let contentCardCornerRadius: CGFloat = 14
     static let contentCardInset: CGFloat = 16
     static let contentCardPadding: CGFloat = 16
 }
@@ -84,13 +84,13 @@ struct LiquidGlassCardModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .background(tint.opacity(opacity * (AppTheme.glassOpacity / AppTheme.defaultGlassOpacity)), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .background(Color(red: 0.105, green: 0.105, blue: 0.12).opacity(0.96), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .background(tint.opacity(opacity * 0.34), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .strokeBorder(
                         LinearGradient(
-                            colors: [.white.opacity(0.48), .white.opacity(0.08)],
+                            colors: [.white.opacity(0.22), .white.opacity(0.04)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
@@ -106,7 +106,7 @@ struct LiquidGlassCardModifier: ViewModifier {
                             .fill(LinearGradient(colors: [.white, .clear], startPoint: .topLeading, endPoint: .bottomTrailing))
                     )
             }
-            .shadow(color: .black.opacity(0.12), radius: 14, y: 7)
+            .shadow(color: .black.opacity(0.38), radius: 16, y: 8)
     }
 }
 
@@ -197,28 +197,28 @@ struct AnimatedGlassWallpaper: View {
             ZStack {
                 LinearGradient(
                     colors: [
-                        AppTheme.accent.opacity(0.42),
-                        Color(uiColor: .systemBackground).opacity(0.62),
-                        AppTheme.accent.opacity(0.22)
+                        Color.black,
+                        Color(red: 0.055, green: 0.055, blue: 0.065),
+                        Color.black
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
 
                 blob(
-                    color: AppTheme.accent.opacity(0.48),
+                    color: AppTheme.accent.opacity(0.12),
                     size: 340,
                     x: sin(phase * 0.34) * 125,
                     y: cos(phase * 0.28) * 155
                 )
                 blob(
-                    color: AppTheme.accent.opacity(0.36),
+                    color: Color.white.opacity(0.045),
                     size: 280,
                     x: cos(phase * 0.24) * 155,
                     y: sin(phase * 0.38) * 175
                 )
                 blob(
-                    color: Color.white.opacity(0.20),
+                    color: AppTheme.accent.opacity(0.07),
                     size: 190,
                     x: sin(phase * 0.20 + 2) * 150,
                     y: cos(phase * 0.30 + 1) * 110
@@ -321,5 +321,27 @@ struct AppLogo: View {
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
         .accessibilityHidden(true)
+    }
+}
+
+
+struct ReferenceToggleStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 8) {
+            configuration.label
+            Spacer(minLength: 0)
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(configuration.isOn ? Color.white : Color.white.opacity(0.12))
+                .frame(width: 48, height: 28)
+                .overlay(alignment: configuration.isOn ? .trailing : .leading) {
+                    Circle()
+                        .fill(configuration.isOn ? Color.black : Color.gray.opacity(0.8))
+                        .frame(width: 22, height: 22)
+                        .padding(3)
+                }
+                .overlay(RoundedRectangle(cornerRadius: 15).stroke(.white.opacity(0.18), lineWidth: 0.6))
+                .animation(.easeOut(duration: 0.18), value: configuration.isOn)
+                .onTapGesture { configuration.isOn.toggle() }
+        }
     }
 }

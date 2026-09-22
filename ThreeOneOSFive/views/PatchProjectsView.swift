@@ -476,7 +476,7 @@ struct PatchProjectsView: View {
             .buttonStyle(.plain)
             .padding(.vertical, 8)
             .padding(.horizontal, 10)
-            .liquidGlassCard(cornerRadius: 18, tint: AppTheme.accent, opacity: 0.06)
+            .liquidGlassCard(cornerRadius: 14, tint: .white, opacity: 0.035)
         } else {
             VStack(alignment: .leading, spacing: 0) {
                 Button {
@@ -509,7 +509,7 @@ struct PatchProjectsView: View {
             .padding(.horizontal, 10)
             .padding(.top, 7)
             .padding(.bottom, expandedPatchID == item.id ? 2 : 7)
-            .liquidGlassCard(cornerRadius: 18, tint: AppTheme.accent, opacity: 0.06)
+            .liquidGlassCard(cornerRadius: 14, tint: .white, opacity: 0.035)
         }
     }
 
@@ -728,9 +728,9 @@ private struct ExternalPanelView: View {
                         Text(tab.title)
                             .font(.system(size: 8, weight: .bold))
                     }
-                    .foregroundStyle(selectedTab == tab ? .white : .gray)
+                    .foregroundStyle(selectedTab == tab ? .black : .gray)
                     .frame(width: 58, height: 58)
-                    .background(selectedTab == tab ? Color.red.opacity(0.85) : Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    .background(selectedTab == tab ? Color.white : Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
@@ -787,10 +787,10 @@ private struct ExternalPanelView: View {
             Button { applySelectedPatch() } label: {
                 Label(isWorking ? "APLICANDO…" : "INICIAR", systemImage: "play.fill")
                     .font(.caption.weight(.black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.black)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 13)
-                    .background(Color.red, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .background(Color.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
             .buttonStyle(.plain)
             .disabled(isWorking || item == nil)
@@ -802,7 +802,7 @@ private struct ExternalPanelView: View {
     private func toggleRow(_ title: String, icon: String, isOn: Binding<Bool>) -> some View {
         HStack(spacing: 10) {
             Image(systemName: icon)
-                .foregroundStyle(.red)
+                .foregroundStyle(.white)
                 .frame(width: 22)
             Text(title)
                 .font(.subheadline.weight(.semibold))
@@ -810,11 +810,12 @@ private struct ExternalPanelView: View {
             Spacer()
             Toggle("", isOn: isOn)
                 .labelsHidden()
-                .tint(.red)
+                .toggleStyle(ReferenceToggleStyle())
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.08), lineWidth: 0.6))
     }
 
     private func sliderCard(_ title: String, icon: String, value: Binding<Double>, range: ClosedRange<Double>, labels: [String]) -> some View {
@@ -823,7 +824,7 @@ private struct ExternalPanelView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.white)
             Slider(value: value, in: range)
-                .tint(.red)
+                .tint(.white)
             HStack {
                 ForEach(labels, id: \.self) { label in
                     Text(label).font(.caption2).foregroundStyle(.gray)
@@ -1000,11 +1001,11 @@ private struct PatchActivationToggle: View {
                     EmptyView()
                 }
                 .labelsHidden()
-                .tint(AppTheme.accent)
+                .toggleStyle(ReferenceToggleStyle())
                 .accessibilityLabel(language.text("patch.toggle"))
             }
         }
-        .frame(width: 44, height: 32)
+        .frame(width: 56, height: 32)
         .scaleEffect(actionPulse ? 1.08 : 1)
         .overlay {
             RoundedRectangle(cornerRadius: 12, style: .continuous)

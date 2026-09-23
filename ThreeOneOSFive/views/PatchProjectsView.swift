@@ -20,6 +20,7 @@ struct PatchProjectsView: View {
     @EnvironmentObject private var draftCoordinator: PatchDraftCoordinator
     @EnvironmentObject private var store: PatchProjectStore
     @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
+    @AppStorage("patch.display.density") private var patchDisplayDensity = "comfortable"
     @State private var showCreate = false
     @State private var showImporter = false
     @State private var showWallpaperImporter = false
@@ -482,9 +483,13 @@ struct PatchProjectsView: View {
                 .buttonStyle(.plain)
 
                 if expandedPatchID == item.id {
+                    PatchTechnicalSummary(item: item, language: language)
+                        .padding(.leading, 40)
+                        .padding(.trailing, 8)
+                        .padding(.top, 2)
                     PatchActivationToggle(store: store, item: item)
                         .padding(.leading, 40)
-                        .padding(.bottom, 8)
+                        .padding(.bottom, patchDisplayDensity == "compact" ? 4 : 8)
                         .transition(
                             .asymmetric(
                                 insertion: .scale(scale: 0.92, anchor: .top).combined(with: .opacity),
@@ -494,8 +499,8 @@ struct PatchProjectsView: View {
                 }
             }
             .padding(.horizontal, 10)
-            .padding(.top, 7)
-            .padding(.bottom, expandedPatchID == item.id ? 2 : 7)
+            .padding(.top, patchDisplayDensity == "compact" ? 4 : 7)
+            .padding(.bottom, expandedPatchID == item.id ? 2 : (patchDisplayDensity == "compact" ? 4 : 7))
             .liquidGlassCard(cornerRadius: 14, tint: .white, opacity: 0.035)
         }
     }
@@ -521,6 +526,19 @@ struct PatchProjectsView: View {
                 .frame(minWidth: 28, minHeight: 28)
                 .background(Color.white.opacity(0.1), in: Circle())
                 .accessibilityLabel("\(selectedCategoryItems.count) patches")
+            Button {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    patchDisplayDensity = patchDisplayDensity == "compact" ? "comfortable" : "compact"
+                }
+            } label: {
+                Image(systemName: patchDisplayDensity == "compact" ? "rectangle.grid.1x2" : "rectangle.grid.2x2")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Alternar densidade dos patches")
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 2)
@@ -961,6 +979,47 @@ private struct WallpaperImportFeedback: Identifiable {
     let message: String
 }
 
+private struct PatchTechnicalSummary: View {
+    let item: PatchLibraryItem
+    let language: AppLanguage
+
+    private var metadata: (version: Int, changelog: String?, checksum: String?) {
+        PatchProjectLibrary.remoteMetadata(for: item.id)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Label("v\(metadata.version)", systemImage: "tag")
+                if let checksum = metadata.checksum, !checksum.isEmpty {
+                    Label(String(checksum.prefix(8)), systemImage: "checkmark.shield")
+                }
+                Spacer()
+                Text(item.packageURL.lastPathComponent)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .font(.system(size: 10, weight: .semibold, design: .rounded))
+            .foregroundStyle(.secondary)
+
+            if let changelog = metadata.changelog, !changelog.isEmpty {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("CHANGELOG")
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .foregroundStyle(AppTheme.accent)
+                    Text(changelog)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(3)
+                }
+            }
+        }
+        .padding(10)
+        .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(.white.opacity(0.08), lineWidth: 0.6))
+    }
+}
+
 private struct PatchProjectRow: View {
     let item: PatchLibraryItem
     let language: AppLanguage
@@ -1008,9 +1067,11 @@ private struct PatchProjectRow: View {
                     Circle()
                         .fill(isApplied ? Color.green : Color.white.opacity(0.32))
                         .frame(width: 6, height: 6)
-                    Text(isApplied ? "ATIVO" : "PRONTO")
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
-                        .foregroundStyle(isApplied ? .green : .secondary)
+                    if isApplied {
+                        Text("ATIVO")
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .foregroundStyle(.green)
+                    }
                 }
                 if item.summary.isPasswordProtected || item.project?.isPrivate == true {
                     HStack(spacing: 6) {

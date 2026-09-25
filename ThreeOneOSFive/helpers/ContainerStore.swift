@@ -89,7 +89,7 @@ enum ContainerStore {
 
     static func installedAppsFromMHACandidates(
         identifiers: [String],
-        bundleMetadata: [String: ApplicationBundleMetadata],
+        bundleMetadata: [String: ApplicationBundleMetadata] = [:],
         progress: (([InstalledApp]) -> Void)? = nil
     ) -> [InstalledApp] {
         progress?([])

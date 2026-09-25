@@ -483,8 +483,13 @@ struct CleanerView: View {
                         ContainerPresentationPolicy.shouldShow(bundleID: $0)
                     },
                     activateContainer: { application in
-                        guard application.bundleID == Bundle.main.bundleIdentifier else { return nil }
-                        return application.containerPath
+                    var activationError: NSString?
+                        return MCMActivateContainerPath(
+                        2,
+                            application.bundleID,
+                        false,
+                        &activationError
+                        )
                     },
                     isValidContainerPath: ContainerStore.isApplicationContainerPath,
                     usageForContainer: { containerPath in

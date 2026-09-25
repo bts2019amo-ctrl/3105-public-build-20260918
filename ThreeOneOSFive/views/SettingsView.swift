@@ -195,10 +195,10 @@ struct SettingsView: View {
                 language.text("settings.current_version"),
                 language.text(appState.isSupported ? "settings.supported" : "settings.unsupported")
             )
-            versionLine("iOS 17", CompatibilityPolicy.verifiedIOS17Range)
-            versionLine("iOS 18", CompatibilityPolicy.verifiedIOS18Range)
-            versionLine("iOS 26", CompatibilityPolicy.verifiedIOS26Range)
-            ForEach(CompatibilityPolicy.verifiedIOS27Builds, id: \.build) { version in
+            versionLine("iOS 17", ExploitSupportPolicy.verifiedIOS17Range)
+            versionLine("iOS 18", ExploitSupportPolicy.verifiedIOS18Range)
+            versionLine("iOS 26", ExploitSupportPolicy.verifiedIOS26Range)
+            ForEach(ExploitSupportPolicy.verifiedIOS27Builds, id: \.build) { version in
                 versionLine("iOS 27", versionLabel(version))
             }
         }

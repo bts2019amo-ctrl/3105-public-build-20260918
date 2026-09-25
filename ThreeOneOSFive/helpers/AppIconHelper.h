@@ -3,16 +3,18 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/// Returns metadata for the current app bundle only.
+/// Returns a dictionary mapping bundleID -> @{ @"name": NSString, @"icon": UIImage }.
+/// Uses the private LSApplicationWorkspace API (stable across iOS 14+).
 NSDictionary<NSString *, NSDictionary *> *installedAppInfo(void);
 
-/// Returns the current app icon when the bundle identifier matches.
+/// Fetches an icon for a single bundle ID via LSApplicationProxy.
 UIImage *iconForBundleID(NSString *bundleID);
 
-/// Returns metadata for the current app bundle only.
+/// Returns @{ @"name": NSString, @"icon": UIImage } for a single bundle ID.
 NSDictionary *appInfoForBundleID(NSString *bundleID);
 
-/// External app launching is unavailable in the normal sandbox.
+/// Opens an installed app using LaunchServices. Returns NO when the private
+/// selector is unavailable or the requested bundle cannot be opened.
 BOOL openApplicationForBundleID(NSString *bundleID);
 
 NS_ASSUME_NONNULL_END

@@ -44,8 +44,10 @@
 "onboarding.install_message" = "3105 需要受支持的签名方式才能访问设备功能。";
 "onboarding.install_ok" = "支持企业证书，包括 eSign 和类似的企业安装方式。";
 "onboarding.install_bad" = "不支持 SideStore、AltStore、3uTools 或 LiveContainer。";
-"onboarding.install_footer" = "请使用受支持的证书，并在标准 iOS 环境中运行应用。";
+"onboarding.install_jailbreak" = "在 iOS 17 至 iOS 18.7.1 上，如果设备已越狱，3105 将无法运行。";
+"onboarding.install_footer" = "继续前，请在未越狱的设备上使用受支持的证书。";
 
+"dashboard.exploit_access" = "漏洞利用权限";
 "dashboard.ready_to_edit" = "可以编辑";
 "dashboard.request_failed" = "请求失败";
 "dashboard.unavailable" = "不可用";
@@ -53,6 +55,7 @@
 "dashboard.open_editor" = "打开 Gestalt 编辑器";
 "dashboard.refresh_access" = "刷新权限";
 "dashboard.requesting_access" = "正在请求权限";
+"dashboard.run_exploit" = "运行漏洞利用";
 "dashboard.editor_locked" = "获得写入权限后即可解锁编辑器。";
 "dashboard.device_name" = "设备名称";
 "dashboard.hardware_model" = "硬件型号";
@@ -66,6 +69,10 @@
 "dashboard.unsupported_device" = "不支持的设备";
 "dashboard.unsupported_message" = "暂不支持 iOS %@。\n\n当前支持：\n• iOS 17.0–17.7.x\n• iOS 18.0–18.7.1\n• iOS 26.0–26.6.1\n• iOS 27.0 开发者 Beta 1–4\n• iOS 27.0 公开 Beta 1–2";
 "dashboard.installation" = "应用安装";
+"dashboard.kernel_status" = "内核状态";
+"dashboard.kernel_running" = "正在激活…";
+"dashboard.kernel_active" = "已激活";
+"dashboard.kernel_inactive" = "未激活";
 "dashboard.enterprise_signing" = "3105 仅在使用企业证书签名时运行。不支持 SideStore、AltStore、3uTools 或 LiveContainer。";
 "dashboard.features" = "功能";
 "dashboard.features_footer" = "开启清理或壁纸后，该功能才会显示在应用导航中。";
@@ -240,7 +247,9 @@
 
 "accessibility.open_logs" = "打开日志";
 "accessibility.open_settings" = "打开设置";
+"accessibility.requesting_access" = "正在请求漏洞利用权限";
 "accessibility.open_editor_hint" = "打开 MobileGestalt 功能编辑器";
+"accessibility.run_exploit_hint" = "请求 Gestalt 编辑器所需的写入权限";
 "accessibility.open_github" = "在 GitHub 上打开 3105";
 "accessibility.open_profile" = "打开 %@ 的个人资料";
 "accessibility.log_entry" = "日志条目 %lld：%@";
@@ -263,6 +272,7 @@
 "settings.palette.red" = "红色";
 "settings.palette.teal" = "青色";
 "settings.ios_version" = "iOS 版本";
+"settings.exploit_status" = "漏洞利用状态";
 "settings.support" = "支持";
 "settings.unsupported" = "不支持";
 "settings.supported" = "受支持";
@@ -274,16 +284,29 @@
 "settings.developer_public_beta_build" = "开发者 Beta %lld / 公开 Beta %lld · %@";
 "settings.supported_range_summary" = "已验证：iOS 17.0–17.7.x、iOS 18.0–18.7.1、iOS 26.0–26.6.1、iOS 27.0 开发者 Beta 1–4 和公开 Beta 1–2。";
 
+"kernel.section_title" = "内核漏洞利用";
+"kernel.run_exploit" = "运行内核漏洞利用";
+"kernel.exploit_running" = "正在运行内核漏洞利用…";
+"kernel.exploit_success" = "已验证沙盒外访问权限";
+"kernel.exploit_failed" = "内核漏洞利用失败";
+"kernel.footer_warning" = "仅内存运行（重启后不保留）。失败时请重新打开应用后再试。";
+"kernel.auto_run" = "启动时自动运行";
+"kernel.failed_requires_relaunch" = "请重新打开应用后再试。";
 "settings.supported_versions_footer" = "仅启用上方列出的精确构建版本。其他 iOS 27 构建版本在验证前会标记为不支持。";
 "settings.sandbox_token" = "沙盒令牌";
 "settings.generate_token" = "生成令牌";
+"settings.token_footer" = "成功获得漏洞利用权限后可用。";
 "settings.credits" = "致谢";
 "settings.social_media" = "社交媒体";
 "social.github_role" = "3105 源代码";
 "social.iosvn_role" = "iOSVN 社区";
 "credit.yangjiii" = "开发者与设计者";
+"credit.forcequit" = "bad_query 漏洞利用";
 "credit.filzaslop" = "FilzaSlop — MHA-C2 与应用发现";
 "credit.pocket_poster" = "Pocket Poster、Nugget 与 .tendies 格式";
+"credit.sandbox_escape" = "FilzaSlop 沙盒逃逸基础";
+"credit.opa" = "Dopamine 越狱，kexploit 基础";
+"credit.seo" = "kexploit_opa334 移植";
 
 "gestalt.title" = "Gestalt 编辑器";
 "gestalt.apply_changes" = "应用更改";
@@ -349,7 +372,7 @@
 "logs.copy" = "复制日志";
 "logs.share" = "分享日志";
 "logs.empty_title" = "没有日志条目";
-"logs.empty_message" = "本次会话中的编辑和同步活动将显示在这里。";
+"logs.empty_message" = "本次会话中的漏洞利用和编辑器活动将显示在这里。";
 
 "browser.title" = "应用数据浏览器";
 "browser.workspace" = "3105 工作区";

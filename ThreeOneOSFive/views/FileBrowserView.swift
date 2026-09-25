@@ -1176,20 +1176,7 @@ struct FileBrowserView: View {
         let path = currentPath
         let targetBundleID = bundleID
         DispatchQueue.global(qos: .userInitiated).async {
-            if shouldGrant {
-                var handle: Int64 = -1
-                if ContainerAccessPolicy.shouldAttemptMCM(bundleID: targetBundleID),
-                   let targetBundleID {
-                    var activationError: NSString?
-                    handle = MCMActivateContainer(2, targetBundleID, false, &activationError)
-                    let detail = activationError.map { String($0) } ?? "none"
-                    log("filebrowser: MCM activate \(targetBundleID) -> \(handle), detail=\(detail)")
-                }
-                if handle < 0 {
-                    handle = ContainerStore.grantContainerAccess(path)
-                    log("filebrowser: traversal grant \(path) -> \(handle)")
-                }
-            }
+            if shouldGrant { log("filebrowser: using normal app sandbox for \(targetBundleID ?? "current app")") }
             let loadedEntries = ContainerStore.listFiles(at: path)
             DispatchQueue.main.async {
                 guard currentPath == path else { return }

@@ -221,9 +221,9 @@ struct OnboardingView: View {
             }
 
             VStack(alignment: .leading, spacing: 10) {
-                versionRow(icon: "checkmark.circle.fill", title: "iOS 17", value: ExploitSupportPolicy.verifiedIOS17Range, color: .green)
-                versionRow(icon: "checkmark.circle.fill", title: "iOS 18", value: ExploitSupportPolicy.verifiedIOS18Range, color: .green)
-                versionRow(icon: "checkmark.circle.fill", title: "iOS 26", value: ExploitSupportPolicy.verifiedIOS26Range, color: .green)
+                versionRow(icon: "checkmark.circle.fill", title: "iOS 17", value: CompatibilityPolicy.verifiedIOS17Range, color: .green)
+                versionRow(icon: "checkmark.circle.fill", title: "iOS 18", value: CompatibilityPolicy.verifiedIOS18Range, color: .green)
+                versionRow(icon: "checkmark.circle.fill", title: "iOS 26", value: CompatibilityPolicy.verifiedIOS26Range, color: .green)
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
@@ -231,7 +231,7 @@ struct OnboardingView: View {
                         Spacer()
                         Text(language.text("onboarding.beta")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     }
-                    ForEach(ExploitSupportPolicy.verifiedIOS27Builds, id: \.build) { v in
+                    ForEach(CompatibilityPolicy.verifiedIOS27Builds, id: \.build) { v in
                         let betaLabel = language.text("onboarding.developer_beta", "\(v.beta)")
                             + (v.publicBeta.map {
                                 " · " + language.text("onboarding.public_beta", "\($0)")
@@ -289,7 +289,6 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 10) {
                 installBullet(icon: "checkmark.seal.fill", text: language.text("onboarding.install_ok"), color: .green)
                 installBullet(icon: "xmark.octagon.fill", text: language.text("onboarding.install_bad"), color: .red)
-                installBullet(icon: "exclamationmark.triangle.fill", text: language.text("onboarding.install_jailbreak"), color: .orange)
             }
             .padding(14)
             .background(

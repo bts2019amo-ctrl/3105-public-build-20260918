@@ -1,6 +1,6 @@
 import Foundation
 
-enum ExploitSupportPolicy {
+enum CompatibilityPolicy {
     static let verifiedIOS17Range = "17.0–17.7.x"
     static let verifiedIOS18Range = "18.0–18.7.1"
     static let verifiedIOS26Range = "26.0–26.6.1"
@@ -20,7 +20,7 @@ enum ExploitSupportPolicy {
         verifiedIOS27Builds.first { $0.build == build }?.publicBeta
     }
 
-    static func supportsKernelExploit(major: Int, minor: Int, patch: Int) -> Bool {
+    static func supportsLegacySystem(major: Int, minor: Int, patch: Int) -> Bool {
         guard minor >= 0, patch >= 0 else { return false }
 
         if major == 17 {
@@ -35,7 +35,7 @@ enum ExploitSupportPolicy {
     }
 
     static func isSupported(major: Int, minor: Int, patch: Int, build: String) -> Bool {
-        if supportsKernelExploit(major: major, minor: minor, patch: patch) {
+        if supportsLegacySystem(major: major, minor: minor, patch: patch) {
             return true
         }
 

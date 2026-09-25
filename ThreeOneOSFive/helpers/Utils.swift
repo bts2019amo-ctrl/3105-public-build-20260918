@@ -16,8 +16,7 @@ func log(_ msg: String) { AppLog.shared.append("[3105] \(msg)") }
 // Retain the pipe for the app's lifetime so stdout/stderr stay redirected.
 private var logCapturePipe: Pipe?
 
-// Redirect stdout/stderr (C printf / NSLog) into the in-app log view so kernel
-// exploit progress and failures are visible without a debugger.
+// Redirect stdout/stderr (C printf / NSLog) into the in-app log view.
 func setupLogCapture() {
     guard logCapturePipe == nil else { return }  // already set up
     let pipe = Pipe()
@@ -98,21 +97,6 @@ enum AppInfo {
     static var isHomeButton: Bool {
         let sel = NSSelectorFromString("_hasHomeButton")
         return UIDevice.responds(to: sel) && (UIDevice.perform(sel)?.takeUnretainedValue() as? Bool ?? false)
-    }
-}
-
-// MARK: - Exploit status
-enum ExploitStatus: Equatable {
-    case notStarted, success(method: String), failed(method: String, code: Int64), unsupported(String)
-    var isSuccess: Bool { if case .success = self { return true }; return false }
-    var isFailed: Bool { if case .failed = self { return true }; return false }
-    var displayText: String {
-        switch self {
-        case .notStarted: return "Not attempted"
-        case .success(let m): return "OK via \(m)"
-        case .failed(let m, let c): return "FAILED \(m) (\(c))"
-        case .unsupported(let m): return "Unsupported: \(m)"
-        }
     }
 }
 

@@ -20,8 +20,6 @@ struct PatchProjectsView: View {
     @EnvironmentObject private var draftCoordinator: PatchDraftCoordinator
     @EnvironmentObject private var store: PatchProjectStore
     @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
-    @AppStorage("patch.display.mode") private var patchDisplayMode = "comfortable"
-    @AppStorage("patch.sort.order") private var patchSortOrder = "recent"
     @State private var showCreate = false
     @State private var showImporter = false
     @State private var showWallpaperImporter = false
@@ -82,14 +80,9 @@ struct PatchProjectsView: View {
     }
 
     private var selectedCategoryItems: [PatchLibraryItem] {
-        let items = store.items.filter {
+        store.items.filter {
             PatchProjectLibrary.category(for: $0) == selectedCategory
                 && PatchProjectLibrary.featureCategory(for: $0) == selectedFeature
-        }
-        switch patchSortOrder {
-        case "name": return items.sorted { PatchProjectLibrary.displayName(for: $0).localizedCaseInsensitiveCompare(PatchProjectLibrary.displayName(for: $1)) == .orderedAscending }
-        case "status": return items.sorted { (DevicePatchService.latestReceipt(projectID: $0.id) != nil) && DevicePatchService.latestReceipt(projectID: $1.id) == nil }
-        default: return items.sorted { ($0.project?.updatedAt ?? .distantPast) > ($1.project?.updatedAt ?? .distantPast) }
         }
     }
 
@@ -501,9 +494,9 @@ struct PatchProjectsView: View {
                 }
             }
             .padding(.horizontal, 10)
-            .padding(.top, patchDisplayMode == "compact" ? 4 : 7)
-            .padding(.bottom, expandedPatchID == item.id ? 2 : (patchDisplayMode == "compact" ? 4 : 7))
-            .liquidGlassCard(cornerRadius: patchDisplayMode == "compact" ? AppTheme.compactCardCornerRadius : 14, tint: .white, opacity: 0.035)
+            .padding(.top, 7)
+            .padding(.bottom, expandedPatchID == item.id ? 2 : 7)
+            .liquidGlassCard(cornerRadius: 14, tint: .white, opacity: 0.035)
         }
     }
 
@@ -528,24 +521,6 @@ struct PatchProjectsView: View {
                 .frame(minWidth: 28, minHeight: 28)
                 .background(Color.white.opacity(0.1), in: Circle())
                 .accessibilityLabel("\(selectedCategoryItems.count) patches")
-            Menu {
-                Picker("Ordenar", selection: $patchSortOrder) {
-                    Text("Mais recentes").tag("recent")
-                    Text("Nome").tag("name")
-                    Text("Estado").tag("status")
-                }
-                Picker("Visualização", selection: $patchDisplayMode) {
-                    Text("Confortável").tag("comfortable")
-                    Text("Compacta").tag("compact")
-                }
-            } label: {
-                Image(systemName: "slider.horizontal.3")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 30, height: 30)
-                    .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-            }
-            .accessibilityLabel("Opções de visualização dos patches")
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 2)
@@ -575,11 +550,11 @@ struct PatchProjectsView: View {
 
     private var featureMenu: some View {
         Menu {
-            Button { selectedFeature = .cache } label: { menuChoice("patch.feature.cache", selectedFeature == .cache, icon: "internaldrive.fill") }
-            Button { selectedFeature = .avatar } label: { menuChoice("patch.feature.avatar", selectedFeature == .avatar, icon: "person.crop.circle.fill") }
-            Button { selectedFeature = .hologram } label: { menuChoice("patch.feature.hologram", selectedFeature == .hologram, icon: "sparkles") }
-            Button { selectedFeature = .external } label: { menuChoice("patch.feature.external", selectedFeature == .external, icon: "globe") }
-            Button { selectedFeature = .skin } label: { menuChoice("patch.feature.skin", selectedFeature == .skin, icon: "paintbrush.pointed.fill") }
+            Button { selectedFeature = .cache } label: { menuChoice("patch.feature.cache", selectedFeature == .cache) }
+            Button { selectedFeature = .avatar } label: { menuChoice("patch.feature.avatar", selectedFeature == .avatar) }
+            Button { selectedFeature = .hologram } label: { menuChoice("patch.feature.hologram", selectedFeature == .hologram) }
+            Button { selectedFeature = .external } label: { menuChoice("patch.feature.external", selectedFeature == .external) }
+            Button { selectedFeature = .skin } label: { menuChoice("patch.feature.skin", selectedFeature == .skin) }
         } label: {
             Label(featureTitle, systemImage: "slider.horizontal.3")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
@@ -601,9 +576,6 @@ struct PatchProjectsView: View {
                 Text(syncTitle)
                     .font(.caption.weight(.semibold))
                 Spacer()
-                Text("\(store.items.count) patches")
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(.secondary)
                 if let date = store.lastRemoteSyncAt {
                     Text(date, style: .time)
                         .font(.caption2.monospacedDigit())
@@ -614,7 +586,7 @@ struct PatchProjectsView: View {
             }
             .foregroundStyle(.secondary)
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.vertical, 7)
             .liquidGlassCard(cornerRadius: 14, tint: AppTheme.accent, opacity: 0.04)
         }
         .buttonStyle(.plain)
@@ -640,9 +612,8 @@ struct PatchProjectsView: View {
         }
     }
 
-    private func menuChoice(_ key: String, _ selected: Bool, icon: String = "square.grid.2x2") -> some View {
+    private func menuChoice(_ key: String, _ selected: Bool) -> some View {
         HStack {
-            Image(systemName: icon)
             Text(language.text(key))
             Spacer()
             if selected {
@@ -996,8 +967,6 @@ private struct PatchProjectRow: View {
 
     var body: some View {
         let isApplied = DevicePatchService.latestReceipt(projectID: item.id) != nil
-        let remoteMetadata = PatchProjectLibrary.remoteMetadata(for: item.id)
-        let fileSize = (try? item.packageURL.resourceValues(forKeys: [.fileSizeKey]).fileSize).flatMap { $0 }
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 2, style: .continuous)
                 .fill(isApplied ? Color.green : Color.clear)
@@ -1032,17 +1001,6 @@ private struct PatchProjectRow: View {
                 Text(language.text("patch.feature." + PatchProjectLibrary.featureCategory(for: item).rawValue))
                     .font(.system(size: 10, weight: .semibold, design: .rounded))
                     .foregroundStyle(AppTheme.accent)
-                HStack(spacing: 7) {
-                    Text("v\(remoteMetadata.version)")
-                    if let fileSize {
-                        Text(Self.formatBytes(fileSize))
-                    }
-                    if let updatedAt = item.project?.updatedAt {
-                        Text(updatedAt, style: .relative)
-                    }
-                }
-                .font(.system(size: 9, weight: .medium, design: .rounded))
-                .foregroundStyle(.secondary.opacity(AppTheme.secondaryTextOpacity))
             }
             Spacer(minLength: 4)
             VStack(alignment: .trailing, spacing: 6) {
@@ -1074,12 +1032,6 @@ private struct PatchProjectRow: View {
             }
         }
         .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityValue(isApplied ? "Ativo" : (item.isLocked ? "Bloqueado" : "Disponível"))
-    }
-
-    private static func formatBytes(_ bytes: Int) -> String {
-        ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
     }
 
     private var rowDetail: String {

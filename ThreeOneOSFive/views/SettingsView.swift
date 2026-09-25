@@ -15,6 +15,8 @@ struct SettingsView: View {
     private var animationSpeed = AppTheme.defaultAnimationSpeed
     @AppStorage(AppTheme.saturationStorageKey)
     private var saturation = AppTheme.defaultSaturation
+    @AppStorage("patch.display.mode") private var patchDisplayMode = "comfortable"
+    @AppStorage("patch.sort.order") private var patchSortOrder = "recent"
 
     private var selectedPalette: AppAccentPalette {
         AppAccentPalette(rawValue: accentPalette) ?? .orange
@@ -40,6 +42,7 @@ struct SettingsView: View {
                         languageCard
                         paletteCard
                         appearanceEditorCard
+                        patchDisplayCard
                         deviceCard
                         supportCard
                     }
@@ -183,6 +186,28 @@ struct SettingsView: View {
             settingsCardHeader("common.device", systemImage: "iphone")
             settingValue(language.text("dashboard.hardware_model"), AppInfo.displayMachineName)
             settingValue(language.text("settings.ios_version"), "\(AppInfo.osVersion) (\(AppInfo.osBuild))")
+        }
+        .padding(18)
+        .glassCard()
+    }
+
+    private var patchDisplayCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            settingsCardHeader("Visualização dos patches", systemImage: "rectangle.3.group")
+            Picker("Densidade", selection: $patchDisplayMode) {
+                Text("Confortável").tag("comfortable")
+                Text("Compacta").tag("compact")
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            Picker("Ordenação", selection: $patchSortOrder) {
+                Text("Recentes").tag("recent")
+                Text("Nome").tag("name")
+                Text("Estado").tag("status")
+            }
+            .pickerStyle(.menu)
+            .tint(AppTheme.accent)
+            settingValue("Acessibilidade", "Dynamic Type · VoiceOver")
         }
         .padding(18)
         .glassCard()

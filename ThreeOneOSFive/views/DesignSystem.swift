@@ -61,6 +61,10 @@ enum AppTheme {
     static let contentCardCornerRadius: CGFloat = 14
     static let contentCardInset: CGFloat = 16
     static let contentCardPadding: CGFloat = 16
+    static let compactCardCornerRadius: CGFloat = 12
+    static let controlHeight: CGFloat = 36
+    static let standardSpacing: CGFloat = 12
+    static let secondaryTextOpacity = 0.68
 }
 
 struct AppCardBorder: View {
@@ -84,8 +88,8 @@ struct LiquidGlassCardModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(Color(red: 0.105, green: 0.105, blue: 0.12).opacity(0.96), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .background(tint.opacity(opacity * 0.34), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .background(Color(red: 0.105, green: 0.105, blue: 0.12).opacity(0.96 - (AppTheme.glassOpacity * 0.35)), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .background(tint.opacity(max(opacity, AppTheme.glassOpacity * 0.34)), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .strokeBorder(

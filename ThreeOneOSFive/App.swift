@@ -21,7 +21,7 @@ struct ThreeOneOSFiveApp: App {
 
     init() {
         setupLogCapture()
-        log("app: External System launching — iOS \(AppInfo.osVersion) (\(AppInfo.osBuild)) \(AppInfo.machineName)")
+        log("app: 3105 launching — iOS \(AppInfo.osVersion) (\(AppInfo.osBuild)) \(AppInfo.machineName)")
     }
 
     private var language: AppLanguage {
@@ -93,7 +93,6 @@ struct ThreeOneOSFiveApp: App {
             }
             .onAppear {
                 if keySession.isAuthenticated && !showOnboarding {
-                    patchStore.setAuthorized(true)
                     patchStore.activate()
                     patchStore.startRemoteSync()
                     appState.detectSupport()
@@ -102,7 +101,6 @@ struct ThreeOneOSFiveApp: App {
             }
             .onChange(of: keySession.isAuthenticated) { authenticated in
                 if authenticated {
-                    patchStore.setAuthorized(true)
                     patchStore.activate()
                     patchStore.startRemoteSync()
                     appState.detectSupport()
@@ -116,7 +114,6 @@ struct ThreeOneOSFiveApp: App {
                 appState.detectSupport()
             }
             .onOpenURL { url in
-                guard keySession.isAuthenticated else { return }
                 patchDraftCoordinator.presentImport(url)
             }
             .tint(AppTheme.accent)
@@ -326,7 +323,6 @@ final class IOSKeySession: ObservableObject {
             let envelope = try JSONDecoder().decode(IOSKeyResponseEnvelope.self, from: responseData)
             let result = envelope.result.data.json
             let accepted = result.success == true
-                && result.valid != false
                 && result.active == true
                 && result.status?.lowercased() == "active"
             guard accepted else {

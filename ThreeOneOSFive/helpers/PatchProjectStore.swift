@@ -76,7 +76,6 @@ final class PatchProjectStore: ObservableObject {
     @Published private(set) var remoteSyncState: RemoteSyncState = .idle
     @Published private(set) var lastRemoteSyncAt: Date?
     @Published private(set) var lastRemoteSyncError: String?
-    @Published private(set) var isAuthorized = false
     @Published var passwordRequest: PatchPasswordRequest?
     @Published var alert: PatchStoreAlert?
     @Published var unlockErrorKey: String?
@@ -98,19 +97,11 @@ final class PatchProjectStore: ObservableObject {
 
     init(autoLoad: Bool = true) {
         guard autoLoad else { return }
-        // Patch data is never loaded until the authenticated app session authorizes it.
-    }
-
-    func setAuthorized(_ authorized: Bool) {
-        if authorized {
-            isAuthorized = true
-        } else {
-            deactivateAndClear()
-        }
+        activate()
     }
 
     func activate() {
-        guard isAuthorized, !isActivated else { return }
+        guard !isActivated else { return }
         isActivated = true
         isBusy = true
         Task.detached(priority: .userInitiated) { [weak self] in
@@ -121,7 +112,6 @@ final class PatchProjectStore: ObservableObject {
 
     func deactivateAndClear() {
         isActivated = false
-        isAuthorized = false
         stopRemoteSync()
         items = []
         isBusy = false
@@ -138,7 +128,7 @@ final class PatchProjectStore: ObservableObject {
     }
 
     func startRemoteSync() {
-        guard isAuthorized, isActivated, remoteSyncTask == nil else { return }
+        guard isActivated, remoteSyncTask == nil else { return }
         remoteSyncTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.synchronizeRemoteFeed()
@@ -153,12 +143,11 @@ final class PatchProjectStore: ObservableObject {
     }
 
     func syncNow() {
-        guard isAuthorized else { return }
         Task { await synchronizeRemoteFeed() }
     }
 
     private func synchronizeRemoteFeed() async {
-        guard isAuthorized, isActivated, !isBusy else { return }
+        guard !isBusy else { return }
         remoteSyncState = .syncing
         do {
             var components = URLComponents(
@@ -269,7 +258,6 @@ final class PatchProjectStore: ObservableObject {
     }
 
     func create(project: PatchProject, password: String?) {
-        guard isAuthorized else { return }
         runOperation(successMessageKey: "patch.created_message") {
             let encoded = try PatchPackageCodec.encodeNew(project: project, password: password)
             let summary = try PatchPackageCodec.inspect(encoded.data)
@@ -304,8 +292,7 @@ final class PatchProjectStore: ObservableObject {
     }
 
     func update(project: PatchProject) {
-        guard isAuthorized,
-              let item = items.first(where: { $0.id == project.id }),
+        guard let item = items.first(where: { $0.id == project.id }),
               let contentKey = item.contentKey else {
             present(.invalidProject)
             return
@@ -327,7 +314,7 @@ final class PatchProjectStore: ObservableObject {
     }
 
     func importPackage(at sourceURL: URL) {
-        guard isAuthorized, !isBusy else { return }
+        guard !isBusy else { return }
         isBusy = true
         let hasAccess = sourceURL.startAccessingSecurityScopedResource()
         Task.detached(priority: .userInitiated) { [weak self] in
@@ -361,7 +348,7 @@ final class PatchProjectStore: ObservableObject {
         password: String? = nil,
         origin: PatchPackageOrigin? = nil
     ) -> Bool {
-        guard isAuthorized, !isBusy else { return false }
+        guard !isBusy else { return false }
         isBusy = true
         Task.detached(priority: .userInitiated) { [weak self] in
             do {
@@ -392,7 +379,6 @@ final class PatchProjectStore: ObservableObject {
     }
 
     func importPackage(from source: PatchImportSource) {
-        guard isAuthorized else { return }
         switch source {
         case .file(let url):
             importPackage(at: url)
@@ -404,7 +390,7 @@ final class PatchProjectStore: ObservableObject {
     }
 
     private func importPackage(fromRemoteURL remoteURL: URL) {
-        guard isAuthorized, !isBusy,
+        guard !isBusy,
               PatchImportRoute.validatedRemoteURL(remoteURL) != nil else {
             if !isBusy { present(.invalidImportLink) }
             return
@@ -448,7 +434,7 @@ final class PatchProjectStore: ObservableObject {
     }
 
     func requestUnlock(for item: PatchLibraryItem) {
-        guard isAuthorized, item.isLocked, !isBusy else { return }
+        guard item.isLocked, !isBusy else { return }
         do {
             let data = try PatchProjectLibrary.readPackage(at: item.packageURL)
             pendingUnlock = PendingUnlock(
@@ -473,7 +459,7 @@ final class PatchProjectStore: ObservableObject {
     }
 
     func unlock(password: String) {
-        guard isAuthorized, let pending = pendingUnlock, !isBusy else { return }
+        guard let pending = pendingUnlock, !isBusy else { return }
         isBusy = true
         unlockErrorKey = nil
         Task.detached(priority: .userInitiated) { [weak self] in

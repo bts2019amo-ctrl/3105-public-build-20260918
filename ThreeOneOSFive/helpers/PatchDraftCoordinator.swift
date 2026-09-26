@@ -13,7 +13,7 @@ enum PatchImportSource: Equatable {
 }
 
 enum PatchImportRoute {
-    static let urlScheme = "externalsystem"
+    static let urlScheme = "threeoneosfive"
 
     static func resolve(_ incomingURL: URL) -> PatchImportSource {
         if incomingURL.isFileURL {

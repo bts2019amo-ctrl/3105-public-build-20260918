@@ -456,6 +456,17 @@ struct FileBrowserView: View {
         ShareLink(item: URL(fileURLWithPath: entry.path)) {
             Label(language.text("browser.share"), systemImage: "square.and.arrow.up")
         }
+        Divider()
+        if bundleID != nil {
+            Button {
+                requestPatchCreation(for: entry)
+            } label: {
+                Label(
+                    language.text("browser.create_patch"),
+                    systemImage: entry.isDirectory ? "folder.badge.plus" : "shippingbox"
+                )
+            }
+        }
         if !entry.isDirectory, entry.name.lowercased().hasSuffix(".zip") {
             Button {
                 extractArchive(entry)
@@ -1200,6 +1211,46 @@ struct FileBrowserView: View {
         }
     }
 
+    private func requestPatchCreation(for entry: FileEntry) {
+        guard let bundleID else {
+            operationNotice = FileReplacementNotice(
+                title: language.text("patch.create_from_browser_failed"),
+                message: language.text("patch.error.invalid_bundle")
+            )
+            return
+        }
+        let itemURL = URL(fileURLWithPath: entry.path, isDirectory: entry.isDirectory)
+        let containerURL = URL(fileURLWithPath: containerPath, isDirectory: true)
+        activityText = language.text("patch.preparing_from_browser")
+        let suggestedName = entry.isDirectory
+            ? entry.name
+            : itemURL.deletingPathExtension().lastPathComponent
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                let draft = try PatchDraftService.makeDraft(
+                    bundleID: bundleID,
+                    containerRoot: containerURL,
+                    itemURL: itemURL,
+                    suggestedName: suggestedName
+                )
+                DispatchQueue.main.async {
+                    activityText = nil
+                    patchDraftCoordinator.present(draft)
+                }
+            } catch let error as PatchPackageError {
+                DispatchQueue.main.async {
+                    activityText = nil
+                    presentPatchDraftError(error)
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    activityText = nil
+                    presentPatchDraftError(.invalidProject)
+                }
+            }
+        }
+    }
+
     private func extractArchive(_ entry: FileEntry) {
         let archiveURL = URL(fileURLWithPath: entry.path, isDirectory: false)
         let directoryURL = URL(fileURLWithPath: currentPath, isDirectory: true)
@@ -1221,6 +1272,13 @@ struct FileBrowserView: View {
                 into: directoryURL
             ).destinationURL.path
         }
+    }
+
+    private func presentPatchDraftError(_ error: PatchPackageError) {
+        operationNotice = FileReplacementNotice(
+            title: language.text("patch.create_from_browser_failed"),
+            message: language.text(error.localizationKey)
+        )
     }
 
     private func requestReplacement(for entry: FileEntry) {

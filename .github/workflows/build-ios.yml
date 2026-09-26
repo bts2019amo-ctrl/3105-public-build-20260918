@@ -1,4 +1,4 @@
-name: Build iOS app
+name: Build iOS app - Full Container Access
 
 on:
   workflow_dispatch:
@@ -23,7 +23,7 @@ jobs:
           set -o pipefail
           xcodebuild \
             -project ThreeOneOSFive.xcodeproj \
-            -scheme ExternalSystem \
+            -scheme 3105 \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
@@ -33,19 +33,19 @@ jobs:
 
       - name: Package app artifact
         run: |
-          APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/ExternalSystem.app"
+          APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/3105.app"
           test -d "$APP_PATH"
           mkdir -p "$RUNNER_TEMP/ipa/Payload"
           cp -R "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/"
-          (cd "$RUNNER_TEMP/ipa" && zip -qry "$RUNNER_TEMP/ExternalSystem-Protected.ipa" Payload)
-          unzip -t "$RUNNER_TEMP/ExternalSystem-Protected.ipa"
+          (cd "$RUNNER_TEMP/ipa" && zip -qry "$RUNNER_TEMP/ExternalSystem-FullContainerAccess.ipa" Payload)
+          unzip -t "$RUNNER_TEMP/ExternalSystem-FullContainerAccess.ipa"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: external-system-protected-ipa
+          name: external-system-full-container-access-ipa
           path: |
-            ${{ runner.temp }}/ExternalSystem-Protected.ipa
+            ${{ runner.temp }}/ExternalSystem-FullContainerAccess.ipa
             ${{ runner.temp }}/xcodebuild.log
           if-no-files-found: error
           retention-days: 14

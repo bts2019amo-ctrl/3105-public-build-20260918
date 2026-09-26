@@ -20,7 +20,6 @@ struct PatchProjectsView: View {
     @EnvironmentObject private var draftCoordinator: PatchDraftCoordinator
     @EnvironmentObject private var store: PatchProjectStore
     @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
-    @State private var showCreate = false
     @State private var showImporter = false
     @State private var showWallpaperImporter = false
     @State private var showCleaner = false
@@ -92,11 +91,6 @@ struct PatchProjectsView: View {
     ) {
         self.onOpenSettings = onOpenSettings
         self.onOpenLogs = onOpenLogs
-#if targetEnvironment(simulator)
-        _showCreate = State(
-            initialValue: ProcessInfo.processInfo.arguments.contains("--simulate-patch-editor")
-        )
-#endif
     }
 
     var body: some View {
@@ -244,14 +238,6 @@ struct PatchProjectsView: View {
                     }
                 )
                 .ignoresSafeArea()
-            }
-            .sheet(isPresented: $showCreate) {
-                PatchProjectEditorView(
-                    existingProject: nil,
-                    passwordIsProtected: false
-                ) { project, password in
-                    store.create(project: project, password: password)
-                }
             }
             .sheet(isPresented: $showCleaner) {
                 CleanerView()
@@ -633,9 +619,6 @@ struct PatchProjectsView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            Button(language.text("patch.new")) { showCreate = true }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 64)

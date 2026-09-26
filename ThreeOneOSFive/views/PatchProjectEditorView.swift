@@ -157,7 +157,7 @@ struct PatchProjectEditorView: View {
                     }
                 }
             }
-            .navigationTitle(language.text(existingProject == nil ? "patch.new" : "patch.edit"))
+            .navigationTitle(language.text("patch.edit"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

@@ -123,7 +123,6 @@
 "patch.ff_normal" = "FF NORMAL";
 "patch.ff_max" = "FF MAX";
 "patch.add" = "Thêm dự án patch";
-"patch.new" = "Tạo patch";
 "patch.import" = "Nhập .3105";
 "patch.export" = "Xuất .3105";
 "patch.edit" = "Sửa";
@@ -176,7 +175,6 @@
 "patch.importing_replacement" = "Đang nhập tệp thay thế…";
 "patch.edit_rule_hint" = "Mở quy tắc này để chỉnh sửa";
 "patch.tap_rule_to_edit" = "Chạm vào một quy tắc để sửa đường dẫn hoặc tệp thay thế.";
-"browser.create_patch" = "Tạo patch";
 "patch.select_files" = "Chọn các tệp";
 "patch.add_selected" = "Thêm";
 "patch.folder_scanning" = "Đang tải tệp trong thư mục…";
@@ -186,8 +184,6 @@
 "patch.folder_selection_footer" = "Chọn các đường dẫn đích bạn cần. Bạn sẽ chọn riêng tệp thay thế trong trình sửa patch.";
 "patch.select_all" = "Chọn tất cả";
 "patch.deselect_all" = "Bỏ chọn tất cả";
-"patch.preparing_from_browser" = "Đang chuẩn bị đường dẫn patch…";
-"patch.create_from_browser_failed" = "Không thể tạo patch";
 "patch.password" = "Mật khẩu";
 "patch.password_optional" = "Mật khẩu không bắt buộc";
 "patch.password_locked" = "Đã đặt cố định";

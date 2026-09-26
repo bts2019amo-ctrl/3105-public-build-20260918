@@ -281,6 +281,10 @@ enum PatchProjectLibrary {
             try fileManager.removeItem(at: root)
         }
         try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
+        let workspaceRoot = try PatchWorkspaceService.patchesRootURL(fileManager: fileManager)
+        if fileManager.fileExists(atPath: workspaceRoot.path) {
+            try fileManager.removeItem(at: workspaceRoot)
+        }
         [categoryDefaultsKey, featureDefaultsKey, remoteDefaultsKey, remoteVersionKey, remotePatchVersionKey, remoteChangelogKey, remoteChecksumKey, remoteNameKey, remoteIconKey]
             .forEach { UserDefaults.standard.removeObject(forKey: $0) }
     }

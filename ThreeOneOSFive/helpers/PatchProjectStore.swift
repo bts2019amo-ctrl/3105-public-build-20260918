@@ -113,6 +113,7 @@ final class PatchProjectStore: ObservableObject {
     func deactivateAndClear() {
         isActivated = false
         stopRemoteSync()
+        try? PatchProjectLibrary.resetAll()
         items = []
         isBusy = false
         remoteSyncState = .idle

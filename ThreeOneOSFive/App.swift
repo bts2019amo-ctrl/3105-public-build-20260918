@@ -263,6 +263,7 @@ final class IOSKeySession: ObservableObject {
     private var monitorTask: Task<Void, Never>?
 
     init() {
+        Self.enforceInstallationIdentity()
         storedKey = Self.readKeychain()
         monitorTask = Task { [weak self] in
             while !Task.isCancelled {
@@ -295,6 +296,7 @@ final class IOSKeySession: ObservableObject {
     }
 
     func logout() {
+        try? PatchProjectLibrary.resetAll()
         storedKey = nil
         expiresAt = nil
         isAuthenticated = false
@@ -352,6 +354,20 @@ final class IOSKeySession: ObservableObject {
         let generated = UUID().uuidString
         UserDefaults.standard.set(generated, forKey: key)
         return generated
+    }
+
+    private static func enforceInstallationIdentity() {
+        let bundleID = Bundle.main.bundleIdentifier ?? "unknown.bundle"
+        let bundleName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "unknown"
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown"
+        let fingerprint = "\(bundleID)|\(bundleName)|\(version)|\(build)"
+        let identityKey = "installation.identity.fingerprint"
+        if let previous = UserDefaults.standard.string(forKey: identityKey), previous != fingerprint {
+            try? PatchProjectLibrary.resetAll()
+            deleteKeychain()
+        }
+        UserDefaults.standard.set(fingerprint, forKey: identityKey)
     }
 
     private static let dateFormatter: ISO8601DateFormatter = {

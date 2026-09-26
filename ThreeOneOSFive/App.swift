@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import Security
+import CryptoKit
 
 @main
 struct ThreeOneOSFiveApp: App {
@@ -361,13 +362,22 @@ final class IOSKeySession: ObservableObject {
         let bundleName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "unknown"
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown"
-        let fingerprint = "\(bundleID)|\(bundleName)|\(version)|\(build)"
+        let executableHash = executableDigest() ?? "unavailable"
+        let fingerprint = "\(bundleID)|\(bundleName)|\(version)|\(build)|\(executableHash)"
         let identityKey = "installation.identity.fingerprint"
         if let previous = UserDefaults.standard.string(forKey: identityKey), previous != fingerprint {
             try? PatchProjectLibrary.resetAll()
             deleteKeychain()
         }
         UserDefaults.standard.set(fingerprint, forKey: identityKey)
+    }
+
+    private static func executableDigest() -> String? {
+        guard let executableURL = Bundle.main.executableURL,
+              let executableData = try? Data(contentsOf: executableURL, options: [.mappedIfSafe]) else {
+            return nil
+        }
+        return SHA256.hash(data: executableData).map { String(format: "%02x", $0) }.joined()
     }
 
     private static let dateFormatter: ISO8601DateFormatter = {

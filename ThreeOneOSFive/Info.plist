@@ -9,11 +9,11 @@
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
-    <string>com.apple.mobile.MobileHouseArrest</string>
+    <string>com.externalsystem.patchcontrol</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>EXTERNAL SYSTEM</string>
+    <string>ExternalSystem</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

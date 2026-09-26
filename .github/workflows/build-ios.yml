@@ -23,7 +23,7 @@ jobs:
           set -o pipefail
           xcodebuild \
             -project ThreeOneOSFive.xcodeproj \
-            -scheme 3105 \
+            -scheme ExternalSystem \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
@@ -33,7 +33,7 @@ jobs:
 
       - name: Package app artifact
         run: |
-          APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/3105.app"
+          APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/ExternalSystem.app"
           test -d "$APP_PATH"
           mkdir -p "$RUNNER_TEMP/ipa/Payload"
           cp -R "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/"

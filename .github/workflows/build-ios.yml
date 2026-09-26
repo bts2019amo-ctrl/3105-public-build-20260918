@@ -23,7 +23,7 @@ jobs:
           set -o pipefail
           xcodebuild \
             -project ThreeOneOSFive.xcodeproj \
-            -scheme 3105 \
+            -scheme ExternalSystem \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
@@ -33,16 +33,16 @@ jobs:
 
       - name: Package app artifact
         run: |
-          APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/3105.app"
+          APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/ExternalSystem.app"
           test -d "$APP_PATH"
-          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$RUNNER_TEMP/3105-unsigned.app.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$RUNNER_TEMP/external-system-unsigned.app.zip"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: 3105-unsigned-ios-release
+          name: external-system-unsigned-ios-release
           path: |
-            ${{ runner.temp }}/3105-unsigned.app.zip
+            ${{ runner.temp }}/external-system-unsigned.app.zip
             ${{ runner.temp }}/xcodebuild.log
           if-no-files-found: error
           retention-days: 14

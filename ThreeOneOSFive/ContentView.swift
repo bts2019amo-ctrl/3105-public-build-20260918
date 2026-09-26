@@ -121,7 +121,7 @@ struct ContentView: View {
                     )
                 }
             }
-            .navigationTitle("3105")
+            .navigationTitle("EXTERNAL SYSTEM")
             .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 300)
         } detail: {
             sectionContent(selectedVisibleSection)

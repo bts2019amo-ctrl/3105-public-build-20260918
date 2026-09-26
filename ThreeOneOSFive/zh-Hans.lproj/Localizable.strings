@@ -123,7 +123,6 @@
 "patch.ff_normal" = "FF NORMAL";
 "patch.ff_max" = "FF MAX";
 "patch.add" = "添加补丁项目";
-"patch.new" = "新建补丁";
 "patch.import" = "导入 .3105";
 "patch.export" = "导出 .3105";
 "patch.edit" = "编辑";
@@ -176,7 +175,6 @@
 "patch.importing_replacement" = "正在导入替换文件…";
 "patch.edit_rule_hint" = "打开并编辑此规则";
 "patch.tap_rule_to_edit" = "轻点规则可编辑目标路径或替换文件。";
-"browser.create_patch" = "创建补丁";
 "patch.select_files" = "选择文件";
 "patch.add_selected" = "添加";
 "patch.folder_scanning" = "正在载入文件夹内容…";
@@ -186,8 +184,6 @@
 "patch.folder_selection_footer" = "选择所需的目标路径。请在补丁编辑器中分别选择替换文件。";
 "patch.select_all" = "全选";
 "patch.deselect_all" = "取消全选";
-"patch.preparing_from_browser" = "正在准备补丁路径…";
-"patch.create_from_browser_failed" = "无法创建补丁";
 "patch.password" = "密码";
 "patch.password_optional" = "可选密码";
 "patch.password_locked" = "已永久设置";

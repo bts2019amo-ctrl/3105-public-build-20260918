@@ -86,17 +86,8 @@ enum DevicePatchService {
         var roots: [String: URL] = [:]
 
         for bundleID in bundleIDs {
-            let legacyBundleID = "com.apple.mobile.MobileHouseArrest"
-            let currentBundleID = Bundle.main.bundleIdentifier
-            var lookupCandidates = [bundleID]
-            if bundleID == legacyBundleID, let currentBundleID, currentBundleID != bundleID {
-                lookupCandidates.append(currentBundleID)
-            } else if bundleID == currentBundleID, bundleID != legacyBundleID {
-                lookupCandidates.append(legacyBundleID)
-            }
-            guard let path = lookupCandidates.lazy.compactMap({ candidate in
-                ContainerStore.resolveAppContainerPath(bundleID: candidate)
-            }).first(where: { ContainerStore.isApplicationContainerPath($0) }) else {
+            guard let path = ContainerStore.resolveAppContainerPath(bundleID: bundleID),
+                  ContainerStore.isApplicationContainerPath(path) else {
                 throw PatchPackageError.targetAppUnavailable(bundleID)
             }
             roots[bundleID] = PatchPathValidator.canonicalFileURL(URL(fileURLWithPath: path, isDirectory: true))

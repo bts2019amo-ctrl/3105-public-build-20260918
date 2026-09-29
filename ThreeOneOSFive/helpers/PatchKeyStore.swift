@@ -3,7 +3,9 @@ import Foundation
 import Security
 
 enum PatchKeyStore {
-    private static let service = "com.apple.mobile.MobileHouseArrest.patch-keys"
+    private static var service: String {
+        "com.apple.mobile.MobileHouseArrest.patch-keys.\(PatchProjectLibrary.storageNamespace())"
+    }
 
     static func account(for summary: PatchPackageSummary) -> String {
         let fingerprint = summary.keyFingerprint.map { String(format: "%02x", $0) }.joined()

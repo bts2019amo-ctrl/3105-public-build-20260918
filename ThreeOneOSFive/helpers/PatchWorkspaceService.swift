@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 
 enum PatchWorkspaceService {
@@ -10,21 +9,6 @@ enum PatchWorkspaceService {
 
     private static let manifestFilename = ".3105-project.plist"
     private static let manifestSchemaVersion = 1
-
-    private static func storageNamespace() -> String {
-        let bundleURL = Bundle.main.bundleURL
-        var hasher = SHA256()
-        if let enumerator = FileManager.default.enumerator(at: bundleURL, includingPropertiesForKeys: [.isRegularFileKey]) {
-            for case let fileURL as URL in enumerator where (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true {
-                let relativePath = fileURL.path.replacingOccurrences(of: bundleURL.path + "/", with: "")
-                hasher.update(data: Data(relativePath.utf8))
-                if let data = try? Data(contentsOf: fileURL, options: .mappedIfSafe) {
-                    hasher.update(data: data)
-                }
-            }
-        }
-        return hasher.finalize().prefix(16).map { String(format: "%02x", $0) }.joined()
-    }
 
     static func documentsRootURL(fileManager: FileManager = .default) throws -> URL {
         try fileManager.url(
@@ -39,7 +23,7 @@ enum PatchWorkspaceService {
         let documents = try documentsRootURL(fileManager: fileManager)
         let root = documents
             .appendingPathComponent("Patches", isDirectory: true)
-            .appendingPathComponent(storageNamespace(), isDirectory: true)
+            .appendingPathComponent(PatchProjectLibrary.storageNamespace(), isDirectory: true)
         try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
         return root
     }

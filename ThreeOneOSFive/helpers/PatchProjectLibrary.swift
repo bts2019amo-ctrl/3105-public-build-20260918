@@ -53,33 +53,69 @@ struct PatchPasswordRequest: Identifiable {
 }
 
 enum PatchProjectLibrary {
-    private static let categoryDefaultsKey = "patch.game.category"
-    private static let featureDefaultsKey = "patch.feature.category"
-    private static let remoteDefaultsKey = "patch.remote.mapping"
-    private static let remoteVersionKey = "patch.remote.version"
-    private static let remotePatchVersionKey = "patch.remote.patch.version"
-    private static let remoteChangelogKey = "patch.remote.changelog"
-    private static let remoteChecksumKey = "patch.remote.checksum"
-    private static let remoteNameKey = "patch.remote.name"
-    private static let remoteIconKey = "patch.remote.icon"
-    private static let selectedCategoryKey = "patch.game.selected.category"
-    private static let selectedFeatureKey = "patch.feature.selected.category"
+    // Apps installed over the same bundle ID can share UserDefaults; keep patch state per IPA.
+    private static func namespacedDefaultsKey(_ key: String) -> String {
+        "\(key).\(storageNamespace())"
+    }
+
+    private static var categoryDefaultsKey: String { namespacedDefaultsKey("patch.game.category") }
+    private static var featureDefaultsKey: String { namespacedDefaultsKey("patch.feature.category") }
+    private static var remoteDefaultsKey: String { namespacedDefaultsKey("patch.remote.mapping") }
+    private static var remoteVersionKey: String { namespacedDefaultsKey("patch.remote.version") }
+    private static var remotePatchVersionKey: String { namespacedDefaultsKey("patch.remote.patch.version") }
+    private static var remoteChangelogKey: String { namespacedDefaultsKey("patch.remote.changelog") }
+    private static var remoteChecksumKey: String { namespacedDefaultsKey("patch.remote.checksum") }
+    private static var remoteNameKey: String { namespacedDefaultsKey("patch.remote.name") }
+    private static var remoteIconKey: String { namespacedDefaultsKey("patch.remote.icon") }
+    private static var selectedCategoryKey: String { namespacedDefaultsKey("patch.game.selected.category") }
+    private static var selectedFeatureKey: String { namespacedDefaultsKey("patch.feature.selected.category") }
     private static let authorCopiesDirectoryName = ".AuthorCopies"
     private static let originsDirectoryName = ".Origins"
 
-    private static func storageNamespace() -> String {
-        let bundleURL = Bundle.main.bundleURL
+    private static let cachedStorageNamespace: String = {
+        let bundle = Bundle.main
+        let bundleURL = bundle.bundleURL.standardizedFileURL
         var hasher = SHA256()
-        if let enumerator = FileManager.default.enumerator(at: bundleURL, includingPropertiesForKeys: [.isRegularFileKey]) {
-            for case let fileURL as URL in enumerator where (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true {
-                let relativePath = fileURL.path.replacingOccurrences(of: bundleURL.path + "/", with: "")
-                hasher.update(data: Data(relativePath.utf8))
-                if let data = try? Data(contentsOf: fileURL, options: .mappedIfSafe) {
-                    hasher.update(data: data)
-                }
+        let identity = [
+            bundle.bundleIdentifier ?? "unknown.bundle",
+            bundle.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "unknown",
+            bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "unknown",
+            bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown"
+        ]
+        for component in identity {
+            hasher.update(data: Data(component.utf8))
+            hasher.update(data: Data([0]))
+        }
+
+        var files: [URL] = []
+        if let enumerator = FileManager.default.enumerator(
+            at: bundleURL,
+            includingPropertiesForKeys: [.isRegularFileKey]
+        ) {
+            for case let fileURL as URL in enumerator
+            where (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true {
+                files.append(fileURL)
             }
         }
+        for fileURL in files.sorted(by: { $0.path < $1.path }) {
+            let relativePath = fileURL.path.replacingOccurrences(of: bundleURL.path + "/", with: "")
+            hasher.update(data: Data(relativePath.utf8))
+            hasher.update(data: Data([0]))
+            if let data = try? Data(contentsOf: fileURL, options: .mappedIfSafe) {
+                hasher.update(data: data)
+            }
+            hasher.update(data: Data([0]))
+        }
+        if files.isEmpty,
+           let executableURL = bundle.executableURL,
+           let executable = try? Data(contentsOf: executableURL, options: .mappedIfSafe) {
+            hasher.update(data: executable)
+        }
         return hasher.finalize().prefix(16).map { String(format: "%02x", $0) }.joined()
+    }()
+
+    static func storageNamespace() -> String {
+        cachedStorageNamespace
     }
 
     static func storageBaseURL(fileManager: FileManager = .default) throws -> URL {
@@ -299,38 +335,26 @@ enum PatchProjectLibrary {
     static func restoreAllActivePatches(
         fileManager: FileManager = .default
     ) throws {
-        var firstError: Error?
-        let base = try storageBaseURL(fileManager: fileManager)
-        guard let namespaceDirectories = try? fileManager.contentsOfDirectory(
-            at: base,
+        // Restoring another IPA's transaction can overwrite the current target app's files.
+        let backupRoot = try backupRootURL(fileManager: fileManager)
+        guard let directories = try? fileManager.contentsOfDirectory(
+            at: backupRoot,
             includingPropertiesForKeys: [.isDirectoryKey],
             options: [.skipsHiddenFiles]
         ) else { return }
 
-        // Include the legacy unsuffixed layout as well as every digest namespace.
-        let backupRoots = namespaceDirectories
-            .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
-            .map { $0.appendingPathComponent("Backups", isDirectory: true) }
-            + [base.appendingPathComponent("Backups", isDirectory: true)]
-
-        for backupRoot in backupRoots where fileManager.fileExists(atPath: backupRoot.path) {
-            guard let directories = try? fileManager.contentsOfDirectory(
-                at: backupRoot,
-                includingPropertiesForKeys: [.isDirectoryKey],
-                options: [.skipsHiddenFiles]
-            ) else { continue }
-            for directory in directories {
-                guard let projectID = UUID(uuidString: directory.lastPathComponent),
-                      let receipt = PatchTransaction.latestReceipt(
-                        projectID: projectID,
-                        backupRoot: backupRoot,
-                        fileManager: fileManager
-                      ) else { continue }
-                do {
-                    try DevicePatchService.restore(receipt: receipt, allowChangedTargets: true)
-                } catch {
-                    firstError = firstError ?? error
-                }
+        var firstError: Error?
+        for directory in directories {
+            guard let projectID = UUID(uuidString: directory.lastPathComponent),
+                  let receipt = PatchTransaction.latestReceipt(
+                    projectID: projectID,
+                    backupRoot: backupRoot,
+                    fileManager: fileManager
+                  ) else { continue }
+            do {
+                try DevicePatchService.restore(receipt: receipt, allowChangedTargets: true)
+            } catch {
+                firstError = firstError ?? error
             }
         }
         if let firstError { throw firstError }
@@ -341,14 +365,14 @@ enum PatchProjectLibrary {
         // A limpeza local não pode ser abortada nesse caso: os metadados, backups e
         // chaves precisam desaparecer mesmo quando uma restauração individual falha.
         try? restoreAllActivePatches(fileManager: fileManager)
-        let base = try storageBaseURL(fileManager: fileManager)
-        if fileManager.fileExists(atPath: base.path) {
-            try fileManager.removeItem(at: base)
+        let packageRoot = try packageRootURL(fileManager: fileManager)
+        if fileManager.fileExists(atPath: packageRoot.path) {
+            try fileManager.removeItem(at: packageRoot)
         }
         _ = try packageRootURL(fileManager: fileManager)
-        let workspaceBaseRoot = try PatchWorkspaceService.patchesBaseRootURL(fileManager: fileManager)
-        if fileManager.fileExists(atPath: workspaceBaseRoot.path) {
-            try fileManager.removeItem(at: workspaceBaseRoot)
+        let workspaceRoot = try PatchWorkspaceService.patchesRootURL(fileManager: fileManager)
+        if fileManager.fileExists(atPath: workspaceRoot.path) {
+            try fileManager.removeItem(at: workspaceRoot)
         }
         [categoryDefaultsKey, featureDefaultsKey, remoteDefaultsKey, remoteVersionKey, remotePatchVersionKey, remoteChangelogKey, remoteChecksumKey, remoteNameKey, remoteIconKey]
             .forEach { UserDefaults.standard.removeObject(forKey: $0) }

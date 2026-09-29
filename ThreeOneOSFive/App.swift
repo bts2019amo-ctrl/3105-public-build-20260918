@@ -2,12 +2,10 @@ import SwiftUI
 import UIKit
 import Security
 import CryptoKit
-import MachO
 
 @main
 struct ThreeOneOSFiveApp: App {
     @StateObject private var appState = AppState()
-    @StateObject private var enrollmentGate = DeviceEnrollmentGate()
     @StateObject private var patchDraftCoordinator = PatchDraftCoordinator()
     @StateObject private var fileOperationCoordinator = FileOperationCoordinator()
     @StateObject private var patchStore = PatchProjectStore(autoLoad: false)
@@ -41,7 +39,7 @@ struct ThreeOneOSFiveApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                if keySession.isAuthenticated && enrollmentGate.isEnrolled {
+                if keySession.isAuthenticated {
                     ContentView()
                         .environmentObject(appState)
                         .environmentObject(patchDraftCoordinator)
@@ -52,12 +50,8 @@ struct ThreeOneOSFiveApp: App {
                         .environment(\.locale, language.locale)
                         .opacity(showOnboarding ? 0 : 1)
                         .allowsHitTesting(!showOnboarding)
-                } else if enrollmentGate.isEnrolled {
-                    IOSKeyLoginView(session: keySession)
-                        .environment(\.appLanguage, language)
-                        .environment(\.locale, language.locale)
                 } else {
-                    DeviceEnrollmentGateView(gate: enrollmentGate)
+                    IOSKeyLoginView(session: keySession)
                         .environment(\.appLanguage, language)
                         .environment(\.locale, language.locale)
                 }
@@ -99,8 +93,7 @@ struct ThreeOneOSFiveApp: App {
                 )
             }
             .onAppear {
-                enrollmentGate.startIfNeeded()
-                if keySession.isAuthenticated && enrollmentGate.isEnrolled && !showOnboarding {
+                if keySession.isAuthenticated && !showOnboarding {
                     PatchProjectLibrary.removeObsoleteProtectedStorage()
                     patchStore.activate()
                     patchStore.startRemoteSync()
@@ -109,7 +102,7 @@ struct ThreeOneOSFiveApp: App {
                 }
             }
             .onChange(of: keySession.isAuthenticated) { authenticated in
-                if authenticated && enrollmentGate.isEnrolled {
+                if authenticated {
                     PatchProjectLibrary.removeObsoleteProtectedStorage()
                     patchStore.activate()
                     patchStore.startRemoteSync()
@@ -118,21 +111,8 @@ struct ThreeOneOSFiveApp: App {
                     patchStore.deactivateAndClear()
                 }
             }
-            .onChange(of: enrollmentGate.isEnrolled) { enrolled in
-                if enrolled {
-                    log("enrollment: device profile confirmed; key login unlocked")
-                    if keySession.isAuthenticated {
-                        PatchProjectLibrary.removeObsoleteProtectedStorage()
-                        patchStore.activate()
-                        patchStore.startRemoteSync()
-                        appState.detectSupport()
-                    }
-                }
-            }
             .onChange(of: scenePhase) { phase in
-                guard phase == .active, !showOnboarding else { return }
-                enrollmentGate.refresh()
-                guard keySession.isAuthenticated else { return }
+                guard phase == .active, !showOnboarding, keySession.isAuthenticated else { return }
                 Task { await keySession.refresh() }
                 appState.detectSupport()
             }
@@ -284,34 +264,15 @@ final class IOSKeySession: ObservableObject {
     private static let endpoint = URL(string: "https://proxysystem.org/api/trpc/proxyKeys.publicCheckKey")!
     private static let keychainService = "com.3105.ios-key"
     private static let keychainAccount = "proxy-system-key"
-    private static let identityKeychainService = "com.3105.installation-integrity"
-    private static let identityKeychainAccount = "bundle-fingerprint"
     private var storedKey: String?
     private var monitorTask: Task<Void, Never>?
 
     init() {
-        Self.enforceInstallationIdentity()
-        if !RuntimeIntegrityGuard.passesBundleIdentityCheck()
-            || !RuntimeIntegrityGuard.passesLoadedImageCheck()
-            || RuntimeIntegrityGuard.hasForbiddenBundleArtifact()
-            || !RuntimeIntegrityGuard.passesInstallationBaseline() {
-            try? PatchProjectLibrary.resetAll()
-            PatchKeyStore.deleteAll()
-            Self.deleteKeychain()
-            Self.runtimeAuthorized = false
-            fatalError("Application integrity check failed")
-        }
         storedKey = Self.readKeychain()
         monitorTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 guard !Task.isCancelled else { return }
-                guard RuntimeIntegrityGuard.passesLoadedImageCheck(),
-                      !RuntimeIntegrityGuard.hasForbiddenBundleArtifact(),
-                      RuntimeIntegrityGuard.passesInstallationBaseline() else {
-                    await self?.invalidateForIntegrityFailure()
-                    return
-                }
                 await self?.refresh()
             }
         }
@@ -347,16 +308,6 @@ final class IOSKeySession: ObservableObject {
         Self.runtimeAuthorized = false
         errorMessage = nil
         Self.deleteKeychain()
-    }
-
-    private func invalidateForIntegrityFailure() {
-        try? PatchProjectLibrary.resetAll()
-        PatchKeyStore.deleteAll()
-        Self.deleteKeychain()
-        Self.runtimeAuthorized = false
-        isAuthenticated = false
-        errorMessage = "A integridade do aplicativo foi alterada. Instale uma cópia oficial."
-        fatalError("Runtime integrity check failed")
     }
 
     private func validate(_ key: String, saveOnSuccess: Bool) async {
@@ -412,32 +363,14 @@ final class IOSKeySession: ObservableObject {
         return generated
     }
 
-    private static func enforceInstallationIdentity() {
-        let fingerprint = installationFingerprint
-        let identityKey = "installation.identity.fingerprint"
-        let previousDefaults = UserDefaults.standard.string(forKey: identityKey)
-        let previousKeychain = readInstallationBaseline()
-        if (previousDefaults != nil && previousDefaults != fingerprint)
-            || (previousKeychain != nil && previousKeychain != fingerprint)
-            || (previousKeychain != nil && previousDefaults == nil) {
-            log("integrity: installation bundle changed; restoring original patch state")
-            try? PatchProjectLibrary.resetAll()
-            PatchKeyStore.deleteAll()
-            deleteKeychain()
-            runtimeAuthorized = false
-        }
-        UserDefaults.standard.set(fingerprint, forKey: identityKey)
-        writeInstallationBaseline(fingerprint)
-    }
-
-    static var installationFingerprint: String {
+    static let installationFingerprint: String = {
         let bundleID = Bundle.main.bundleIdentifier ?? "unknown.bundle"
         let bundleName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "unknown"
         let displayName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "unknown"
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown"
         let bundleHash = bundleDigest() ?? executableDigest() ?? "missing-bundle"
         return "\(bundleID)|\(bundleName)|\(displayName)|version:\(version)|bundle:\(bundleHash)"
-    }
+    }()
 
     private static func executableDigest() -> String? {
         guard let executableURL = Bundle.main.executableURL,
@@ -522,309 +455,7 @@ final class IOSKeySession: ObservableObject {
         SecItemDelete(query as CFDictionary)
     }
 
-    static func installationBaselineMatches() -> Bool {
-        let fingerprint = installationFingerprint
-        return UserDefaults.standard.string(forKey: "installation.identity.fingerprint") == fingerprint
-            && readInstallationBaseline() == fingerprint
-    }
 
-    private static func readInstallationBaseline() -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: identityKeychainService,
-            kSecAttrAccount as String: identityKeychainAccount,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var result: AnyObject?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-              let data = result as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
-    }
-
-    private static func writeInstallationBaseline(_ fingerprint: String) {
-        let data = Data(fingerprint.utf8)
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: identityKeychainService,
-            kSecAttrAccount as String: identityKeychainAccount
-        ]
-        SecItemDelete(query as CFDictionary)
-        var item = query
-        item[kSecValueData as String] = data
-        item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        SecItemAdd(item as CFDictionary, nil)
-    }
-}
-
-enum RuntimeIntegrityGuard {
-    private static let expectedBundleIdentifier = "com.apple.mobile.MobileHouseArrest"
-    private static let expectedBundleName = "EXTERNAL SYSTEM"
-    private static let expectedDisplayName = "EXTERNAL SYSTEM"
-
-    static func hasForbiddenBundleArtifact() -> Bool {
-#if targetEnvironment(simulator)
-        return false
-#else
-        let environment = ProcessInfo.processInfo.environment
-        if environment["DYLD_INSERT_LIBRARIES"] != nil
-            || environment["DYLD_LIBRARY_PATH"] != nil
-            || environment["DYLD_FRAMEWORK_PATH"] != nil {
-            return true
-        }
-        guard let enumerator = FileManager.default.enumerator(
-            at: Bundle.main.bundleURL,
-            includingPropertiesForKeys: [.isRegularFileKey],
-            options: []
-        ) else { return false }
-        for case let url as URL in enumerator {
-            let extensionName = url.pathExtension.lowercased()
-            if extensionName == "dylib" || extensionName == "deb" {
-                return true
-            }
-        }
-        return false
-#endif
-    }
-
-    static func passesBundleIdentityCheck() -> Bool {
-        guard Bundle.main.bundleIdentifier == expectedBundleIdentifier,
-              Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String == expectedBundleName,
-              Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String == expectedDisplayName else {
-            return false
-        }
-        guard let executableURL = Bundle.main.executableURL,
-              executableURL.path.hasPrefix(Bundle.main.bundleURL.path + "/"),
-              FileManager.default.isReadableFile(atPath: executableURL.path) else {
-            return false
-        }
-        return true
-    }
-
-    @MainActor
-    static func passesInstallationBaseline() -> Bool {
-        IOSKeySession.installationBaselineMatches()
-    }
-
-    static func passesLoadedImageCheck() -> Bool {
-#if targetEnvironment(simulator)
-        return true
-#else
-        #if arch(arm64)
-        // Supported device architecture.
-        #else
-        return false
-        #endif
-        let bundlePath = Bundle.main.bundleURL.standardizedFileURL.path
-        if let enumerator = FileManager.default.enumerator(
-            at: Bundle.main.bundleURL,
-            includingPropertiesForKeys: [.isRegularFileKey],
-            options: []
-        ) {
-            for case let url as URL in enumerator {
-                let extensionName = url.pathExtension.lowercased()
-                if extensionName == "dylib"
-                    || extensionName == "deb" {
-                    return false
-                }
-            }
-        }
-        let imageCount = _dyld_image_count()
-        for index in 0..<imageCount {
-            guard let pointer = _dyld_get_image_name(index),
-                  let rawPath = String(validatingUTF8: pointer) else { continue }
-            let path = URL(fileURLWithPath: rawPath).standardizedFileURL.path
-            let isSystemImage = path.hasPrefix("/System/Library/")
-                || path.hasPrefix("/usr/lib/")
-                || path.hasPrefix("/usr/libexec/")
-            let extensionName = URL(fileURLWithPath: path).pathExtension.lowercased()
-            let isBundleForbiddenFile = path.hasPrefix(bundlePath)
-                && (extensionName == "dylib" || extensionName == "deb")
-            if !isSystemImage && isBundleForbiddenFile {
-                return false
-            }
-        }
-        return true
-#endif
-    }
-}
-
-private struct EnrollmentSessionResponse: Decodable {
-    let challenge: String
-    let downloadUrl: String
-}
-
-private struct EnrollmentStatusResponse: Decodable {
-    let status: String
-}
-
-@MainActor
-final class DeviceEnrollmentGate: ObservableObject {
-    @Published private(set) var isEnrolled = false
-    @Published private(set) var isPreparing = false
-    @Published private(set) var statusMessage = "Preparando a ativação segura…"
-    @Published private(set) var errorMessage: String?
-
-    private static let portalOrigin = URL(string: "https://externalsyst-eara5kjo.manus.space")!
-    private static let completedKey = "external-system.device-enrollment.completed.v2"
-    private var challenge: String?
-    private var hasOpenedPortal = false
-    private var pollingTask: Task<Void, Never>?
-
-    init() {
-        isEnrolled = UserDefaults.standard.bool(forKey: Self.completedKey)
-        if isEnrolled {
-            statusMessage = "Dispositivo já confirmado."
-        }
-    }
-
-    deinit {
-        pollingTask?.cancel()
-    }
-
-    func startIfNeeded() {
-        guard !isEnrolled, pollingTask == nil else { return }
-        pollingTask = Task { [weak self] in
-            await self?.prepareAndMonitor()
-        }
-    }
-
-    func refresh() {
-        guard !isEnrolled else { return }
-        Task { [weak self] in await self?.checkStatus() }
-    }
-
-    func openPortal() {
-        guard let challenge, let url = Self.portalURL(for: challenge) else {
-            startIfNeeded()
-            return
-        }
-        UIApplication.shared.open(url)
-        hasOpenedPortal = true
-        statusMessage = "Conclua a instalação em Ajustes e volte para o app."
-    }
-
-    private func prepareAndMonitor() async {
-        await createSessionIfNeeded()
-        guard !Task.isCancelled else { return }
-        while !Task.isCancelled && !isEnrolled {
-            await checkStatus()
-            try? await Task.sleep(nanoseconds: 3_500_000_000)
-        }
-        pollingTask = nil
-    }
-
-    private func createSessionIfNeeded() async {
-        guard challenge == nil else {
-            if !hasOpenedPortal { openPortal() }
-            return
-        }
-        isPreparing = true
-        errorMessage = nil
-        do {
-            var request = URLRequest(url: Self.portalOrigin.appendingPathComponent("api/enrollment/session"))
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Accept")
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
-                throw URLError(.badServerResponse)
-            }
-            let session = try JSONDecoder().decode(EnrollmentSessionResponse.self, from: data)
-            challenge = session.challenge
-            isPreparing = false
-            statusMessage = "Perfil pronto. Toque no botão para abrir o portal."
-            openPortal()
-        } catch {
-            isPreparing = false
-            errorMessage = "Não foi possível conectar ao portal. Verifique sua internet e tente novamente."
-            statusMessage = "Ativação aguardando conexão"
-        }
-    }
-
-    private func checkStatus() async {
-        guard let challenge else {
-            await createSessionIfNeeded()
-            return
-        }
-        do {
-            var components = URLComponents(url: Self.portalOrigin.appendingPathComponent("api/enrollment/status"), resolvingAgainstBaseURL: false)!
-            components.queryItems = [URLQueryItem(name: "challenge", value: challenge)]
-            let (data, response) = try await URLSession.shared.data(from: components.url!)
-            guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else { return }
-            let result = try JSONDecoder().decode(EnrollmentStatusResponse.self, from: data)
-            if result.status.lowercased() == "enrolled" {
-                isEnrolled = true
-                UserDefaults.standard.set(true, forKey: Self.completedKey)
-                statusMessage = "Dispositivo confirmado. A tela de login foi liberada."
-                errorMessage = nil
-            }
-        } catch {
-            // O polling recupera automaticamente de uma falha de rede transitória.
-        }
-    }
-
-    private static func portalURL(for challenge: String) -> URL? {
-        var components = URLComponents(url: portalOrigin, resolvingAgainstBaseURL: false)
-        components?.queryItems = [URLQueryItem(name: "challenge", value: challenge)]
-        return components?.url
-    }
-}
-
-struct DeviceEnrollmentGateView: View {
-    @ObservedObject var gate: DeviceEnrollmentGate
-
-    var body: some View {
-        ZStack {
-            AnimatedGlassWallpaper().ignoresSafeArea()
-            VStack(spacing: 20) {
-                AppLogo(size: 78).shadow(color: AppTheme.accent.opacity(0.35), radius: 22)
-                Text("EXTERNAL SYSTEM")
-                    .font(.headline.weight(.bold))
-                    .tracking(1.4)
-                Image(systemName: "iphone.and.arrow.forward")
-                    .font(.system(size: 34, weight: .medium))
-                    .foregroundStyle(AppTheme.accent)
-                    .padding(18)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                Text("Ative seu dispositivo")
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
-                    .multilineTextAlignment(.center)
-                Text("Antes de inserir sua chave, baixe e autorize o perfil de ativação para identificar este iPhone.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                VStack(spacing: 9) {
-                    Label("1. Abra o portal EXTERNAL SYSTEM", systemImage: "1.circle.fill")
-                    Label("2. Instale em Ajustes › Geral › VPN e Gerenciamento de Dispositivo", systemImage: "2.circle.fill")
-                    Label("3. Volte ao app para liberar o login", systemImage: "3.circle.fill")
-                }
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                if gate.isPreparing {
-                    ProgressView("Preparando perfil…")
-                } else {
-                    Button("Abrir portal de ativação") { gate.openPortal() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.accent)
-                }
-                if let error = gate.errorMessage {
-                    Label(error, systemImage: "wifi.exclamationmark")
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .multilineTextAlignment(.center)
-                } else {
-                    Text(gate.statusMessage)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-            }
-            .padding(26)
-            .frame(maxWidth: 460)
-        }
-        .tint(AppTheme.accent)
-    }
 }
 
 struct IOSKeyLoginView: View {

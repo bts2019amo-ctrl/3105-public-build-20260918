@@ -22,6 +22,9 @@ final class PackageRepositoryStore: ObservableObject {
     private let defaults: UserDefaults
     private var resolutionIndex: RepositoryPackageResolutionIndex
     private var refreshedThisLaunch = false
+    private weak var automaticInstallerPatchStore: PatchProjectStore?
+    private var automaticImportKeys = Set<String>()
+    @Published private var automaticImportOperations = 0
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -76,7 +79,9 @@ final class PackageRepositoryStore: ObservableObject {
     }
 
     var isRefreshing: Bool {
-        catalogSyncOperations > 0 || sourceStates.values.contains(.loading)
+        catalogSyncOperations > 0
+            || sourceStates.values.contains(.loading)
+            || automaticImportOperations > 0
     }
 
     func repository(for sourceID: UUID) -> PackageRepository? {
@@ -156,6 +161,14 @@ final class PackageRepositoryStore: ObservableObject {
         }
     }
 
+    func attachAutomaticInstaller(to patchStore: PatchProjectStore) {
+        automaticInstallerPatchStore = patchStore
+        for source in sources {
+            guard let repository = repositories[source.id] else { continue }
+            scheduleCentralAutoImports(from: repository, source: source, using: patchStore)
+        }
+    }
+
     private func refreshStoredSources() {
         for source in sources {
             refresh(source)
@@ -168,12 +181,19 @@ final class PackageRepositoryStore: ObservableObject {
         do {
             let catalogURLs = try await PackageRepositoryNetworkClient
                 .loadSourceCatalog(from: PackageRepositoryDefaults.catalogURL)
-            let existingCount = sources.count
+            let previousSourceIDs = Set(sources.map(\.id))
+            var existingSources = sources
+            for index in existingSources.indices where existingSources[index].manifestURL
+                .absoluteString.caseInsensitiveCompare(
+                    PackageRepositoryDefaults.legacyPreviewManifestURL.absoluteString
+                ) == .orderedSame {
+                existingSources[index].manifestURL = PackageRepositoryDefaults.centralManifestURL
+            }
             let merged = RepositorySourceMergePolicy.merge(
-                existing: sources,
+                existing: existingSources,
                 catalogURLs: catalogURLs
             )
-            guard merged.count > existingCount else {
+            guard merged != sources else {
                 log(
                     "repository: default catalog synced " +
                     "sources=\(catalogURLs.count) added=0"
@@ -182,13 +202,14 @@ final class PackageRepositoryStore: ObservableObject {
             }
 
             sources = merged
-            for source in sources.dropFirst(existingCount) {
+            let addedCount = merged.filter { !previousSourceIDs.contains($0.id) }.count
+            for source in merged where !previousSourceIDs.contains(source.id) {
                 sourceStates[source.id] = .idle
             }
             persist()
             log(
                 "repository: default catalog synced " +
-                "sources=\(catalogURLs.count) added=\(merged.count - existingCount)"
+                "sources=\(catalogURLs.count) added=\(addedCount)"
             )
         } catch let error as PackageRepositoryError {
             log("repository: default catalog unavailable \(error)")
@@ -213,6 +234,13 @@ final class PackageRepositoryStore: ObservableObject {
                     "repository: loaded \(repository.identifier) " +
                     "packages=\(repository.packages.count)"
                 )
+                if let patchStore = automaticInstallerPatchStore {
+                    scheduleCentralAutoImports(
+                        from: repository,
+                        source: source,
+                        using: patchStore
+                    )
+                }
             } catch let error as PackageRepositoryError {
                 repositories[source.id] = nil
                 sourceStates[source.id] = .failed(error)
@@ -222,6 +250,139 @@ final class PackageRepositoryStore: ObservableObject {
                 sourceStates[source.id] = .failed(.sourceUnavailable)
                 log("repository: failed \(source.manifestURL.host ?? "unknown")")
             }
+        }
+    }
+
+    private func scheduleCentralAutoImports(
+        from repository: PackageRepository,
+        source: RepositorySource,
+        using patchStore: PatchProjectStore
+    ) {
+        let canonicalURL = PackageRepositoryDefaults.centralManifestURL.absoluteString
+        guard repository.identifier == PackageRepositoryDefaults.centralRepositoryIdentifier,
+              repository.sourceURL.absoluteString.caseInsensitiveCompare(canonicalURL) == .orderedSame,
+              source.manifestURL.absoluteString.caseInsensitiveCompare(canonicalURL) == .orderedSame else {
+            return
+        }
+
+        let records = repository.packages
+            .filter { $0.kind == .patch }
+            .map {
+                RepositoryPackageRecord(
+                    sourceID: source.id,
+                    sourceName: repository.name,
+                    sourceURL: repository.sourceURL,
+                    package: $0
+                )
+            }
+        let queuedRecords = records.filter { record in
+            !containsImportedPatch(record, in: patchStore.items)
+                && !downloadingPackageKeys.contains(record.id)
+                && automaticImportKeys.insert(record.id).inserted
+        }
+        guard !queuedRecords.isEmpty else { return }
+
+        automaticImportOperations += 1
+        Task {
+            defer {
+                for record in queuedRecords {
+                    automaticImportKeys.remove(record.id)
+                }
+                automaticImportOperations -= 1
+            }
+            for record in queuedRecords {
+                await automaticallyImportCentralPatch(record, using: patchStore)
+            }
+        }
+    }
+
+    private func automaticallyImportCentralPatch(
+        _ record: RepositoryPackageRecord,
+        using patchStore: PatchProjectStore
+    ) async {
+        let compatibility = PackageCompatibilityEvaluator.evaluate(
+            record.package.supportedOS,
+            major: AppInfo.versionTuple.major,
+            minor: AppInfo.versionTuple.minor,
+            patch: AppInfo.versionTuple.patch,
+            build: AppInfo.osBuild
+        )
+        guard compatibility == .compatible else {
+            log("repository: auto-install skipped incompatible package \(record.package.identifier)")
+            return
+        }
+        guard !patchStore.isBusy else {
+            log("repository: auto-install deferred while patch library is busy")
+            return
+        }
+
+        downloadStartedAtByPackageKey[record.id] = Date()
+        downloadingPackageKeys.insert(record.id)
+        defer {
+            downloadingPackageKeys.remove(record.id)
+            downloadStartedAtByPackageKey[record.id] = nil
+        }
+
+        do {
+            let data = try await PackageRepositoryNetworkClient.download(record.package)
+            guard !patchStore.isBusy else {
+                log("repository: auto-install deferred after download; patch library is busy")
+                return
+            }
+            let summary = try PatchPackageCodec.inspect(data)
+            resolutionIndex.record(
+                summary.packageID,
+                sourceURL: record.sourceURL,
+                packageIdentifier: record.package.identifier
+            )
+            persistResolutionIndex()
+            let origin = PatchPackageOrigin(
+                repositoryName: record.sourceName,
+                repositoryURL: record.sourceURL,
+                packageIdentifier: record.package.identifier,
+                displayName: record.package.name,
+                gameCategory: record.package.gameCategory,
+                featureCategory: record.package.featureCategory,
+                iconURL: record.package.iconURL
+            )
+            let previousAlert = patchStore.alert
+            guard patchStore.importPackage(
+                data: data,
+                password: record.package.sharedPassword,
+                origin: origin
+            ) else {
+                log("repository: auto-install failed to import \(record.package.identifier)")
+                return
+            }
+            if let raw = record.package.gameCategory,
+               let category = PatchGameCategory(rawValue: raw) {
+                PatchProjectLibrary.setCategory(category, for: summary.packageID)
+            }
+            if let raw = record.package.featureCategory,
+               let category = PatchFeatureCategory(rawValue: raw) {
+                PatchProjectLibrary.setFeatureCategory(category, for: summary.packageID)
+            }
+            patchStore.alert = previousAlert
+            log("repository: auto-installed \(record.package.identifier) into its selected categories")
+        } catch let error as PackageRepositoryError {
+            log("repository: auto-install failed \(record.package.identifier) \(error)")
+        } catch let error as PatchPackageError {
+            patchStore.presentImportError(error)
+            log("repository: auto-install rejected invalid patch \(record.package.identifier)")
+        } catch {
+            log("repository: auto-install failed \(record.package.identifier)")
+        }
+    }
+
+    private func containsImportedPatch(
+        _ record: RepositoryPackageRecord,
+        in items: [PatchLibraryItem]
+    ) -> Bool {
+        items.contains { item in
+            guard let origin = item.origin else { return false }
+            return origin.repositoryURL.absoluteString.caseInsensitiveCompare(
+                record.sourceURL.absoluteString
+            ) == .orderedSame && origin.packageIdentifier == record.package.identifier
         }
     }
 
@@ -335,7 +496,8 @@ final class PackageRepositoryStore: ObservableObject {
     func isInstalled(_ record: RepositoryPackageRecord) -> Bool {
         switch record.package.kind {
         case .patch:
-            return false
+            let items = automaticInstallerPatchStore?.items ?? PatchProjectLibrary.load()
+            return containsImportedPatch(record, in: items)
         case .wallpaper:
             return WallpaperPackageStore.contains(
                 repositoryIdentity: record.repositoryIdentity

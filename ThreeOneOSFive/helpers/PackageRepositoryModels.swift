@@ -241,8 +241,15 @@ enum PackageRepositoryLimits {
 
 enum PackageRepositoryDefaults {
     static let catalogURL = URL(
-        string: "https://8328-i7vpby9fenmo5lewom1v7-7d9756a2.us4.manus.computer/api/repository/catalog.json"
+        string: "https://patches3105-ghczdxjq.manus.space/api/repository/catalog.json"
     )!
+    static let centralManifestURL = URL(
+        string: "https://patches3105-ghczdxjq.manus.space/api/repository/manifest.json"
+    )!
+    static let legacyPreviewManifestURL = URL(
+        string: "https://8328-i7vpby9fenmo5lewom1v7-7d9756a2.us4.manus.computer/api/repository/manifest.json"
+    )!
+    static let centralRepositoryIdentifier = "3105.remote.patch-catalog"
 }
 
 enum PackageRepositoryURLPolicy {

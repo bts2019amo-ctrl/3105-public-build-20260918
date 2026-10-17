@@ -12,6 +12,13 @@ struct PatchStoreAlert: Identifiable {
         self.messageKey = messageKey
         self.messageArgument = messageArgument
     }
+
+    func message(language: AppLanguage) -> String {
+        if let messageArgument {
+            return language.text(messageKey, messageArgument)
+        }
+        return language.text(messageKey)
+    }
 }
 
 @MainActor

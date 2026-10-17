@@ -541,11 +541,12 @@ struct PatchProjectsView: View {
 
     @ViewBuilder
     private func itemRow(_ item: PatchLibraryItem) -> some View {
+        let displayName = PatchProjectLibrary.localizedDisplayName(for: item, language: language)
         if item.isLocked {
             Button { store.requestUnlock(for: item) } label: {
                 HStack(spacing: 14) {
                     skinPatchIcon(for: item)
-                    Text(language.text("patch.locked_project"))
+                    Text(displayName.isEmpty ? language.text("patch.locked_project") : displayName)
                         .font(.system(size: 16, weight: .regular, design: .rounded))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1120,6 +1121,7 @@ private struct PatchProjectRow: View {
     let language: AppLanguage
 
     var body: some View {
+        let displayName = PatchProjectLibrary.localizedDisplayName(for: item, language: language)
         let isApplied = DevicePatchService.latestReceipt(projectID: item.id) != nil
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 2, style: .continuous)
@@ -1127,7 +1129,7 @@ private struct PatchProjectRow: View {
                 .frame(width: 3)
             AppRowIcon(systemName: item.isLocked ? "lock.doc.fill" : "shippingbox.fill")
             VStack(alignment: .leading, spacing: 3) {
-                Text(item.isLocked ? language.text("patch.locked_project") : PatchProjectLibrary.localizedDisplayName(for: item, language: language))
+                Text(item.isLocked && displayName.isEmpty ? language.text("patch.locked_project") : displayName)
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)

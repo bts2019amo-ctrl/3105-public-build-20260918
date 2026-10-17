@@ -196,13 +196,11 @@ struct PatchProjectsView: View {
                 showAllFeatures = false
             }
             .onAppear {
-                store.startRemoteSync()
+                store.reload()
             }
             .onChange(of: scenePhase) { phase in
                 if phase == .active {
-                    store.startRemoteSync()
-                } else if phase == .background {
-                    store.stopRemoteSync()
+                    store.reload()
                 }
             }
             .toolbar {
@@ -584,23 +582,7 @@ struct PatchProjectsView: View {
 
     @ViewBuilder
     private func skinPatchIcon(for item: PatchLibraryItem) -> some View {
-        if PatchProjectLibrary.featureCategory(for: item) == .skin,
-           let iconURL = PatchProjectLibrary.remoteIconURL(for: item.id) {
-            AsyncImage(url: iconURL) { phase in
-                if let image = phase.image {
-                    image.resizable().scaledToFill()
-                } else {
-                    AppRowIcon(systemName: "shippingbox.fill", symbolSize: 22, frameSize: 58)
-                }
-            }
-            .frame(width: 58, height: 58)
-            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .stroke(Color.white.opacity(0.18), lineWidth: 0.8)
-            }
-            .transition(.scale(scale: 0.88).combined(with: .opacity))
-        }
+        AppRowIcon(systemName: "shippingbox.fill", symbolSize: 22, frameSize: 58)
     }
 
     private var patchActionButtons: some View {
@@ -610,7 +592,7 @@ struct PatchProjectsView: View {
                 withAnimation(.linear(duration: 0.85).repeatForever(autoreverses: false)) {
                     isRefreshing = true
                 }
-                store.syncNow()
+                store.reload()
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 1_500_000_000)
                     withAnimation(.easeOut(duration: 0.2)) {
@@ -1127,20 +1109,7 @@ private struct PatchProjectRow: View {
             RoundedRectangle(cornerRadius: 2, style: .continuous)
                 .fill(isApplied ? Color.green : Color.clear)
                 .frame(width: 3)
-            if PatchProjectLibrary.featureCategory(for: item) == .skin,
-               let iconURL = PatchProjectLibrary.remoteIconURL(for: item.id) {
-                AsyncImage(url: iconURL) { phase in
-                    if let image = phase.image {
-                        image.resizable().scaledToFill()
-                    } else {
-                        AppRowIcon(systemName: item.isLocked ? "lock.doc.fill" : "shippingbox.fill")
-                    }
-                }
-                .frame(width: 34, height: 34)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            } else {
-                AppRowIcon(systemName: item.isLocked ? "lock.doc.fill" : "shippingbox.fill")
-            }
+            AppRowIcon(systemName: item.isLocked ? "lock.doc.fill" : "shippingbox.fill")
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.isLocked ? language.text("patch.locked_project") : PatchProjectLibrary.localizedDisplayName(for: item, language: language))
                     .font(.body.weight(.semibold))

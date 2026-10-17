@@ -116,12 +116,6 @@
 "patch.category" = "Patch category";
 "patch.feature" = "Patch type";
 "patch.feature.cache" = "Cache";
-"patch.sync.title" = "Patch synchronization";
-"patch.sync.waiting" = "Waiting to synchronize";
-"patch.sync.syncing" = "Synchronizing…";
-"patch.sync.updated" = "Feed updated";
-"patch.sync.partial" = "Feed received partially";
-"patch.sync.offline" = "No connection";
 "patch.feature.avatar" = "Avatar";
 "patch.feature.hologram" = "Hologram";
 "patch.feature.external" = "External";
@@ -244,8 +238,7 @@
 "patch.error.apply" = "The patch could not be applied. Any earlier writes were rolled back.";
 "patch.error.restore" = "The originals could not be restored safely. No unverified target was overwritten.";
 "patch.error.reset" = "The files could not be reset to the applied package state. Any partial writes were rolled back.";
-"patch.error.invalid_import_link" = "This patch import link is invalid. Use a secure HTTPS link to a .3105 package.";
-"patch.error.remote_import" = "The patch could not be downloaded securely. Check the link and try again.";
+"patch.error.invalid_local_package" = "This is not a local .3105 package. Choose a valid package file.";
 
 "accessibility.open_logs" = "Open logs";
 "accessibility.open_settings" = "Open settings";
@@ -737,15 +730,6 @@
 "external.start" = "START";
 "external.general" = "GENERAL";
 "external.xray" = "X-RAY";
-"patch.remote.hs_alto" = "HS HIGH";
-"patch.remote.hs_alto_antena" = "HS HIGH + ANTENNA";
-"patch.remote.hs_alto_pescoco" = "HS HIGH + NECK";
-"patch.remote.hs_peito" = "HS CHEST";
-"patch.remote.hs_peito_antena" = "HS CHEST + ANTENNA";
-"patch.remote.hs_peito_com_antena" = "HS CHEST WITH ANTENNA";
-"patch.remote.hs_pescoco" = "HS NECK";
-"patch.remote.hs_pescoco_antena" = "HS NECK + ANTENNA";
-"patch.remote.hs_pescoco_com_antena" = "HS NECK WITH ANTENNA";
 "settings.palette.cyan" = "Cyan";
 "settings.palette.yellow" = "Yellow";
 "settings.palette.indigo" = "Indigo";

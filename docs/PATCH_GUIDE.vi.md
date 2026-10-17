@@ -197,7 +197,7 @@ Nên đóng các ứng dụng liên quan trong lúc áp dụng hoặc khôi ph�
 
 - **Xuất** luôn đồng bộ nội dung mới nhất trong workspace trước khi chia sẻ file `.3105`.
 - Có thể nhập từ ứng dụng Tệp bằng cách mở hoặc chia sẻ gói `.3105` sang 3105.
-- Website có thể mở app bằng `threeoneosfive://import?url=<URL HTTPS đã percent-encode>`. App chỉ nhận URL HTTPS không chứa tài khoản hoặc mật khẩu nhúng.
+- Chỉ hỗ trợ nhập cục bộ. Mở hoặc chia sẻ tệp `.3105` từ ứng dụng Tệp; không nhận URL web hoặc liên kết nhập từ xa.
 - Trên máy hoặc lần cài mới, gói có bảo vệ sẽ hỏi mật khẩu một lần. 3105 lưu content key đã mở khóa trong Keychain; file xuất ra vẫn được mã hóa và luôn gắn với mật khẩu ban đầu.
 - Patch v1–v5 cũ vẫn sử dụng được và giữ hành vi cũ. Schema v6 thêm `settings.json`, placeholder có kiểu dữ liệu và thao tác sửa JSON; v7 thêm App Group; v8 thêm lựa chọn xoá động qua `canRemove`; v9 thêm key selector theo prefix và giá trị `Data` đọc từ thiết bị. App cũ sẽ từ chối schema mới an toàn thay vì hiểu sai thao tác.
 

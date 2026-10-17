@@ -267,7 +267,11 @@ final class PackageRepositoryStore: ObservableObject {
                     let origin = PatchPackageOrigin(
                         repositoryName: record.sourceName,
                         repositoryURL: record.sourceURL,
-                        packageIdentifier: record.package.identifier
+                        packageIdentifier: record.package.identifier,
+                        displayName: record.package.name,
+                        gameCategory: record.package.gameCategory,
+                        featureCategory: record.package.featureCategory,
+                        iconURL: record.package.iconURL
                     )
                     guard patchStore.importPackage(
                         data: data,
@@ -275,6 +279,14 @@ final class PackageRepositoryStore: ObservableObject {
                         origin: origin
                     ) else {
                         throw PackageRepositoryError.importUnavailable
+                    }
+                    if let raw = record.package.gameCategory,
+                       let category = PatchGameCategory(rawValue: raw) {
+                        PatchProjectLibrary.setCategory(category, for: summary.packageID)
+                    }
+                    if let raw = record.package.featureCategory,
+                       let category = PatchFeatureCategory(rawValue: raw) {
+                        PatchProjectLibrary.setFeatureCategory(category, for: summary.packageID)
                     }
                     log(
                         "repository: handed off \(record.package.identifier) " +
@@ -374,6 +386,8 @@ final class PackageRepositoryStore: ObservableObject {
                 summary: "A compact layout patch for a cleaner app interface.",
                 details: "Simulator preview package used to verify marketplace layout.",
                 category: "Customization",
+                gameCategory: nil,
+                featureCategory: nil,
                 tags: ["Customization", "Layout", "Featured"],
                 publishedAt: ISO8601DateFormatter().date(
                     from: "2026-08-21T08:00:00Z"
@@ -403,6 +417,8 @@ final class PackageRepositoryStore: ObservableObject {
                 summary: "A portable workspace example with multiple bundle targets.",
                 details: nil,
                 category: "Utilities",
+                gameCategory: nil,
+                featureCategory: nil,
                 tags: ["Utilities", "Profiles"],
                 publishedAt: ISO8601DateFormatter().date(
                     from: "2026-08-18T08:00:00Z"
@@ -466,6 +482,8 @@ final class PackageRepositoryStore: ObservableObject {
             summary: "Decoding...",
             details: "Decoding...\n\nNguồn: SerStars/Nugget-Wallpapers (GPL-3.0).",
             category: "Wallpaper",
+            gameCategory: nil,
+            featureCategory: nil,
             tags: ["Wallpaper", "Custom"],
             publishedAt: nil,
             iconURL: previewURL,

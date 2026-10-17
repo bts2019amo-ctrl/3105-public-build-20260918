@@ -582,7 +582,23 @@ struct PatchProjectsView: View {
 
     @ViewBuilder
     private func skinPatchIcon(for item: PatchLibraryItem) -> some View {
-        AppRowIcon(systemName: "shippingbox.fill", symbolSize: 22, frameSize: 58)
+        if let iconURL = item.origin?.iconURL {
+            AsyncImage(url: iconURL) { phase in
+                if let image = phase.image {
+                    image.resizable().scaledToFill()
+                } else {
+                    Image(systemName: "shippingbox.fill")
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.72))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.white.opacity(0.08))
+                }
+            }
+            .frame(width: 58, height: 58)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        } else {
+            AppRowIcon(systemName: "shippingbox.fill", symbolSize: 22, frameSize: 58)
+        }
     }
 
     private var patchActionButtons: some View {

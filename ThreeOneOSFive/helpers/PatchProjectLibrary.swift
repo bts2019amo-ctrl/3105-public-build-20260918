@@ -167,6 +167,9 @@ enum PatchProjectLibrary {
         if let stored = categories?[item.id.uuidString], let category = PatchGameCategory(rawValue: stored) {
             return category
         }
+        if let remote = item.origin?.gameCategory.flatMap(PatchGameCategory.init(rawValue:)) {
+            return remote
+        }
         return item.project?.name.localizedCaseInsensitiveContains("max") == true ? .max : .normal
     }
 
@@ -180,6 +183,9 @@ enum PatchProjectLibrary {
         let features = UserDefaults.standard.dictionary(forKey: featureDefaultsKey) as? [String: String]
         if let stored = features?[item.id.uuidString].flatMap(PatchFeatureCategory.init(rawValue:)) {
             return stored
+        }
+        if let remote = item.origin?.featureCategory.flatMap(PatchFeatureCategory.init(rawValue:)) {
+            return remote
         }
         let name = (displayName(for: item).isEmpty ? (item.project?.name ?? item.packageURL.lastPathComponent) : displayName(for: item)).lowercased()
         if name.contains("skin") { return .skin }
@@ -196,6 +202,10 @@ enum PatchProjectLibrary {
     }
 
     static func displayName(for item: PatchLibraryItem) -> String {
+        if let remoteName = item.origin?.displayName?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !remoteName.isEmpty {
+            return remoteName
+        }
         let name = item.project?.name ?? item.packageURL.deletingPathExtension().lastPathComponent
         guard name.lowercased().hasSuffix(".3105") else { return name }
         return String(name.dropLast(5))

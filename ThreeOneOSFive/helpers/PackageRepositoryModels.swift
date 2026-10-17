@@ -60,6 +60,8 @@ struct PackageRepositoryPackageDocument: Decodable {
     let summary: String
     let description: String?
     let category: String?
+    let gameCategory: String?
+    let featureCategory: String?
     let tags: [String]?
     let publishedAt: String?
     let icon: String?
@@ -106,6 +108,8 @@ struct RepositoryPackage: Identifiable, Hashable {
     let summary: String
     let details: String?
     let category: String?
+    let gameCategory: String?
+    let featureCategory: String?
     let tags: [String]
     let publishedAt: Date?
     let iconURL: URL?
@@ -237,7 +241,7 @@ enum PackageRepositoryLimits {
 
 enum PackageRepositoryDefaults {
     static let catalogURL = URL(
-        string: "https://raw.githubusercontent.com/YangJiiii/3105-repo/main/sources.json"
+        string: "https://8328-i7vpby9fenmo5lewom1v7-7d9756a2.us4.manus.computer/api/repository/catalog.json"
     )!
 }
 
@@ -353,6 +357,8 @@ enum PackageRepositoryValidator {
                 allowsLineBreaks: true
               ),
               isValidOptionalText(package.category, maximumBytes: 80),
+              isValidOptionalText(package.gameCategory, maximumBytes: 16),
+              isValidOptionalText(package.featureCategory, maximumBytes: 16),
               isValidOptionalText(
                 package.changelog,
                 maximumBytes: PackageRepositoryLimits.maximumChangelogBytes,
@@ -364,6 +370,13 @@ enum PackageRepositoryValidator {
               (package.screenshots?.count ?? 0)
                 <= PackageRepositoryLimits.maximumScreenshotCount,
               package.expectedSizeIsValid else {
+            throw PackageRepositoryError.invalidPackage
+        }
+
+        let gameCategory = trimmedOptional(package.gameCategory)
+        let featureCategory = trimmedOptional(package.featureCategory)
+        guard gameCategory.map({ $0 == "normal" || $0 == "max" }) ?? true,
+              featureCategory.map({ ["cache", "avatar", "hologram", "external", "skin"].contains($0) }) ?? true else {
             throw PackageRepositoryError.invalidPackage
         }
 
@@ -428,6 +441,8 @@ enum PackageRepositoryValidator {
             summary: package.summary.trimmingCharacters(in: .whitespacesAndNewlines),
             details: trimmedOptional(package.description),
             category: trimmedOptional(package.category),
+            gameCategory: gameCategory,
+            featureCategory: featureCategory,
             tags: canonicalTags,
             publishedAt: publishedAt,
             iconURL: iconURL,

@@ -100,6 +100,7 @@ struct ThreeOneOSFiveApp: App {
                 if keySession.isAuthenticated && !showOnboarding {
                     PatchProjectLibrary.removeObsoleteProtectedStorage()
                     patchStore.activate()
+                    repositoryStore.refreshAllIfNeeded()
                     appState.detectSupport()
                     checkForUpdate()
                 }
@@ -108,6 +109,7 @@ struct ThreeOneOSFiveApp: App {
                 if authenticated {
                     PatchProjectLibrary.removeObsoleteProtectedStorage()
                     patchStore.activate()
+                    repositoryStore.refreshAllIfNeeded()
                     appState.detectSupport()
                 } else {
                     patchStore.deactivateAndClear()
@@ -118,6 +120,7 @@ struct ThreeOneOSFiveApp: App {
                 guard keySession.isAuthenticated else { return }
                 keySession.validateIntegrityOnForeground()
                 patchStore.reload()
+                repositoryStore.refreshAll()
                 Task { await keySession.refresh() }
                 appState.detectSupport()
             }

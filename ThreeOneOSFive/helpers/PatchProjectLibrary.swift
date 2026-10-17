@@ -55,13 +55,6 @@ struct PatchPasswordRequest: Identifiable {
 enum PatchProjectLibrary {
     private static let categoryDefaultsKey = "patch.game.category"
     private static let featureDefaultsKey = "patch.feature.category"
-    private static let remoteDefaultsKey = "patch.remote.mapping"
-    private static let remoteVersionKey = "patch.remote.version"
-    private static let remotePatchVersionKey = "patch.remote.patch.version"
-    private static let remoteChangelogKey = "patch.remote.changelog"
-    private static let remoteChecksumKey = "patch.remote.checksum"
-    private static let remoteNameKey = "patch.remote.name"
-    private static let remoteIconKey = "patch.remote.icon"
     private static let selectedCategoryKey = "patch.game.selected.category"
     private static let selectedFeatureKey = "patch.feature.selected.category"
     private static let authorCopiesDirectoryName = ".AuthorCopies"
@@ -174,6 +167,9 @@ enum PatchProjectLibrary {
         if let stored = categories?[item.id.uuidString], let category = PatchGameCategory(rawValue: stored) {
             return category
         }
+        if let remote = item.origin?.gameCategory.flatMap(PatchGameCategory.init(rawValue:)) {
+            return remote
+        }
         return item.project?.name.localizedCaseInsensitiveContains("max") == true ? .max : .normal
     }
 
@@ -187,6 +183,9 @@ enum PatchProjectLibrary {
         let features = UserDefaults.standard.dictionary(forKey: featureDefaultsKey) as? [String: String]
         if let stored = features?[item.id.uuidString].flatMap(PatchFeatureCategory.init(rawValue:)) {
             return stored
+        }
+        if let remote = item.origin?.featureCategory.flatMap(PatchFeatureCategory.init(rawValue:)) {
+            return remote
         }
         let name = (displayName(for: item).isEmpty ? (item.project?.name ?? item.packageURL.lastPathComponent) : displayName(for: item)).lowercased()
         if name.contains("skin") { return .skin }
@@ -202,129 +201,18 @@ enum PatchProjectLibrary {
         UserDefaults.standard.set(features, forKey: featureDefaultsKey)
     }
 
-    static func remotePackageID(for remoteID: Int) -> UUID? {
-        let mappings = UserDefaults.standard.dictionary(forKey: remoteDefaultsKey) as? [String: String]
-        guard let value = mappings?[String(remoteID)] else { return nil }
-        return UUID(uuidString: value)
-    }
-
-    static func setRemotePackageID(_ packageID: UUID, for remoteID: Int) {
-        var mappings = UserDefaults.standard.dictionary(forKey: remoteDefaultsKey) as? [String: String] ?? [:]
-        mappings[String(remoteID)] = packageID.uuidString
-        UserDefaults.standard.set(mappings, forKey: remoteDefaultsKey)
-    }
-
-    static func remoteVersion(for remoteID: Int) -> Int64 {
-        let versions = UserDefaults.standard.dictionary(forKey: remoteVersionKey) as? [String: NSNumber]
-        return versions?[String(remoteID)]?.int64Value ?? 0
-    }
-
-    static func setRemoteVersion(_ version: Int64, for remoteID: Int) {
-        var versions = UserDefaults.standard.dictionary(forKey: remoteVersionKey) as? [String: NSNumber] ?? [:]
-        versions[String(remoteID)] = NSNumber(value: version)
-        UserDefaults.standard.set(versions, forKey: remoteVersionKey)
-    }
-
-    static func setRemoteMetadata(version: Int, changelog: String?, checksum: String, for packageID: UUID) {
-        var versions = UserDefaults.standard.dictionary(forKey: remotePatchVersionKey) as? [String: NSNumber] ?? [:]
-        versions[packageID.uuidString] = NSNumber(value: version)
-        UserDefaults.standard.set(versions, forKey: remotePatchVersionKey)
-        var notes = UserDefaults.standard.dictionary(forKey: remoteChangelogKey) as? [String: String] ?? [:]
-        notes[packageID.uuidString] = changelog ?? ""
-        UserDefaults.standard.set(notes, forKey: remoteChangelogKey)
-        var checksums = UserDefaults.standard.dictionary(forKey: remoteChecksumKey) as? [String: String] ?? [:]
-        checksums[packageID.uuidString] = checksum
-        UserDefaults.standard.set(checksums, forKey: remoteChecksumKey)
-    }
-
-    static func remoteMetadata(for packageID: UUID) -> (version: Int, changelog: String?, checksum: String?) {
-        let versions = UserDefaults.standard.dictionary(forKey: remotePatchVersionKey) as? [String: NSNumber]
-        let notes = UserDefaults.standard.dictionary(forKey: remoteChangelogKey) as? [String: String]
-        let checksums = UserDefaults.standard.dictionary(forKey: remoteChecksumKey) as? [String: String]
-        return (
-            versions?[packageID.uuidString]?.intValue ?? 1,
-            notes?[packageID.uuidString],
-            checksums?[packageID.uuidString]
-        )
-    }
-
-    static func clearRemoteMetadata(for packageID: UUID) {
-        for key in [remotePatchVersionKey, remoteChangelogKey, remoteChecksumKey] {
-            var values = UserDefaults.standard.dictionary(forKey: key) as? [String: Any] ?? [:]
-            values.removeValue(forKey: packageID.uuidString)
-            UserDefaults.standard.set(values, forKey: key)
-        }
-    }
-
     static func displayName(for item: PatchLibraryItem) -> String {
-        let names = UserDefaults.standard.dictionary(forKey: remoteNameKey) as? [String: String]
-        let name = names?[item.id.uuidString] ?? item.project?.name ?? ""
+        if let remoteName = item.origin?.displayName?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !remoteName.isEmpty {
+            return remoteName
+        }
+        let name = item.project?.name ?? item.packageURL.deletingPathExtension().lastPathComponent
         guard name.lowercased().hasSuffix(".3105") else { return name }
         return String(name.dropLast(5))
     }
 
     static func localizedDisplayName(for item: PatchLibraryItem, language: AppLanguage) -> String {
-        let name = displayName(for: item)
-        let normalized = name
-            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
-            .replacingOccurrences(of: " ", with: "")
-            .replacingOccurrences(of: "+", with: "plus")
-            .uppercased()
-        let key: String?
-        switch normalized {
-        case "HSALTO": key = "patch.remote.hs_alto"
-        case "HSALTOPLUSANTENA": key = "patch.remote.hs_alto_antena"
-        case "HSALTOPLUSPESCOCO": key = "patch.remote.hs_alto_pescoco"
-        case "HSPEITO": key = "patch.remote.hs_peito"
-        case "HSPEITOPLUSANTENA": key = "patch.remote.hs_peito_antena"
-        case "HSPEITOCOMANTENA": key = "patch.remote.hs_peito_com_antena"
-        case "HSPESCOCO": key = "patch.remote.hs_pescoco"
-        case "HSPESCOCOPLUSANTENA": key = "patch.remote.hs_pescoco_antena"
-        case "HSPESCOCOCOMANTENA": key = "patch.remote.hs_pescoco_com_antena"
-        default: key = nil
-        }
-        return key.map(language.text) ?? name
-    }
-
-    static func setDisplayName(_ name: String, for packageID: UUID) {
-        var names = UserDefaults.standard.dictionary(forKey: remoteNameKey) as? [String: String] ?? [:]
-        names[packageID.uuidString] = name
-        UserDefaults.standard.set(names, forKey: remoteNameKey)
-    }
-
-    static func setRemoteIconURL(_ url: String?, for packageID: UUID) {
-        var icons = UserDefaults.standard.dictionary(forKey: remoteIconKey) as? [String: String] ?? [:]
-        if let url, !url.isEmpty {
-            icons[packageID.uuidString] = url
-        } else {
-            icons.removeValue(forKey: packageID.uuidString)
-        }
-        UserDefaults.standard.set(icons, forKey: remoteIconKey)
-    }
-
-    static func remoteIconURL(for packageID: UUID) -> URL? {
-        let icons = UserDefaults.standard.dictionary(forKey: remoteIconKey) as? [String: String]
-        guard let value = icons?[packageID.uuidString] else { return nil }
-        return URL(string: value, relativeTo: RemotePatchConfiguration.baseURL)?.absoluteURL ?? URL(string: value)
-    }
-
-    static func removeRemotePackagesNotInFeed(
-        remoteIDs: Set<Int>,
-        fileManager: FileManager = .default
-    ) {
-        let mappings = UserDefaults.standard.dictionary(forKey: remoteDefaultsKey) as? [String: String] ?? [:]
-        let itemsByID = Dictionary(uniqueKeysWithValues: load(fileManager: fileManager).map { ($0.id, $0) })
-        for (remoteID, packageIDString) in mappings where !remoteIDs.contains(Int(remoteID) ?? -1) {
-            if let packageID = UUID(uuidString: packageIDString) {
-                if let item = itemsByID[packageID] {
-                    deleteFilesImmediately(for: item, fileManager: fileManager)
-                }
-                setRemoteIconURL(nil, for: packageID)
-                clearRemoteMetadata(for: packageID)
-            }
-        }
-        let activeMappings = mappings.filter { remoteIDs.contains(Int($0.key) ?? -1) }
-        UserDefaults.standard.set(activeMappings, forKey: remoteDefaultsKey)
+        displayName(for: item)
     }
 
     static func restoreAllActivePatches(
@@ -381,7 +269,7 @@ enum PatchProjectLibrary {
         if fileManager.fileExists(atPath: workspaceBaseRoot.path) {
             try fileManager.removeItem(at: workspaceBaseRoot)
         }
-        [categoryDefaultsKey, featureDefaultsKey, remoteDefaultsKey, remoteVersionKey, remotePatchVersionKey, remoteChangelogKey, remoteChecksumKey, remoteNameKey, remoteIconKey]
+        [categoryDefaultsKey, featureDefaultsKey]
             .forEach { UserDefaults.standard.removeObject(forKey: $0) }
     }
 

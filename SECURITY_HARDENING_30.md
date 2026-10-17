@@ -1,4 +1,6 @@
-# Plano de proteção da IPA — 30 camadas
+# Plano de proteção da IPA — 30 camadas (referência histórica)
+
+> O mecanismo dedicado de feed remoto de patches descrito neste documento foi removido do projeto. A sincronização de patches, o endpoint e o token embutido não fazem mais parte do código atual. O app conserva importação de arquivos `.3105` locais; os itens abaixo são recomendações gerais caso um serviço remoto separado seja desenvolvido no futuro.
 
 ## Limite importante
 
@@ -55,7 +57,7 @@ A solução é não confiar na cópia local: após autenticação, a IPA oficial
 29. **Verificações de integridade em pontos críticos:** validar assinatura do bundle, imagem carregada, jailbreak/debugger e ambiente antes de login, feed e aplicação de patch. Essas verificações são sinais, não a autorização final.
 30. **Redução do valor de engenharia reversa:** strip de símbolos, remover logs sensíveis, não embutir segredos, ofuscar apenas identificadores não críticos e forçar atualização mínima quando uma versão for revogada.
 
-## Situação observada no código atual
+## Situação observada antes da remoção do feed
 
 Há defesas úteis já presentes:
 
@@ -68,14 +70,12 @@ Há defesas úteis já presentes:
 - heartbeat do dispositivo;
 - armazenamento local separado por namespace.
 
-Há pontos que precisam de evolução para proteção real:
+Os seguintes pontos descreviam o feed legado e foram retirados junto com ele:
 
-- `syncToken` está embutido no cliente e deve deixar de ser segredo;
-- o feed entrega `fileUrl`, que deve virar URL assinada e temporária;
-- checksum sozinho não prova autoria; é necessário manifesto e pacote assinados;
+- o `syncToken` embutido no cliente;
+- o feed e seus `fileUrl` externos;
 - a autorização ainda não exige App Attest/DeviceCheck;
-- um novo bundle oficial não deve depender da cópia local: deve rebaixar os patches após reautorização;
-- uma IPA modificada não pode ser bloqueada somente por checagens locais; o servidor precisa negar a attestation e os downloads.
+- um novo bundle oficial não deve depender da cópia local: deve rebaixar os patches após reautorização.
 
 ## Ordem segura de implementação
 
@@ -86,4 +86,4 @@ Há pontos que precisam de evolução para proteção real:
 5. Hardening local, limpeza de segredos, logs e rate limiting.
 6. Testes: IPA oficial, update, reinstalação, bundle alterado, debugger, offline, revogação e replay.
 
-**Conclusão:** a proteção dos patches não deve depender de esconder o arquivo dentro da IPA. O patch remoto deve ser inútil para uma IPA clonada porque o servidor não entrega uma autorização válida nem a chave de conteúdo.
+**Conclusão:** este arquivo é somente um plano histórico; ele não representa um serviço de patch remoto ativo no app.

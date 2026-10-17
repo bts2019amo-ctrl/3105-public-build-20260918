@@ -156,6 +156,28 @@ struct PatchPackageOrigin: Codable, Equatable, Hashable {
     let repositoryName: String
     let repositoryURL: URL
     let packageIdentifier: String
+    let displayName: String?
+    let gameCategory: String?
+    let featureCategory: String?
+    let iconURL: URL?
+
+    init(
+        repositoryName: String,
+        repositoryURL: URL,
+        packageIdentifier: String,
+        displayName: String? = nil,
+        gameCategory: String? = nil,
+        featureCategory: String? = nil,
+        iconURL: URL? = nil
+    ) {
+        self.repositoryName = repositoryName
+        self.repositoryURL = repositoryURL
+        self.packageIdentifier = packageIdentifier
+        self.displayName = displayName
+        self.gameCategory = gameCategory
+        self.featureCategory = featureCategory
+        self.iconURL = iconURL
+    }
 }
 
 struct EncodedPatchPackage {
@@ -189,8 +211,7 @@ enum PatchPackageError: Error, Equatable {
     case applyFailed
     case restoreFailed
     case resetFailed
-    case invalidImportLink
-    case remoteImportFailed
+    case invalidLocalPackage
 }
 
 extension PatchPackageError: LocalizedError {
@@ -216,8 +237,7 @@ extension PatchPackageError: LocalizedError {
         case .applyFailed: return "patch.error.apply"
         case .restoreFailed: return "patch.error.restore"
         case .resetFailed: return "patch.error.reset"
-        case .invalidImportLink: return "patch.error.invalid_import_link"
-        case .remoteImportFailed: return "patch.error.remote_import"
+        case .invalidLocalPackage: return "patch.error.invalid_local_package"
         }
     }
 

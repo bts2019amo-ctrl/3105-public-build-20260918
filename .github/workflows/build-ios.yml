@@ -13,14 +13,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Inject PatchProjectStore (GitHub permanent feed)
-        run: |
-          set -e
-          curl -fsSL --retry 8 --retry-delay 2 -o ThreeOneOSFive/helpers/PatchProjectStore.swift \
-            "https://sagem-portsmouth-personality-fort.trycloudflare.com/uploads/PatchProjectStore.swift"
-          wc -c ThreeOneOSFive/helpers/PatchProjectStore.swift
-          grep -n "raw.githubusercontent.com\|feed.json\|custom-2026" ThreeOneOSFive/helpers/PatchProjectStore.swift | head -10
-
       - name: Build unsigned Release app
         run: |
           set -o pipefail

@@ -96,11 +96,11 @@ struct ExternalSystemShellView: View {
         }
         .onChange(of: route) { newRoute in
             if newRoute == .dashboard {
-                patchStore.syncNow()
+                patchStore.reload()
             }
         }
         .onChange(of: selectedGame) { _ in
-            patchStore.syncNow()
+            patchStore.reload()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIScreen.capturedDidChangeNotification)) { _ in
             isScreenCaptured = UIScreen.screens.contains(where: { $0.isCaptured })
@@ -815,14 +815,14 @@ private struct DeltaHomeTab: View {
         selectedGame == .freeFire ? .normal : .max
     }
 
-    private var remoteItems: [PatchLibraryItem] {
+    private var localItems: [PatchLibraryItem] {
         patchStore.items.filter {
             PatchProjectLibrary.category(for: $0) == selectedCategory
         }
     }
 
     private func featureCount(_ feature: PatchFeatureCategory) -> Int {
-        remoteItems.filter { PatchProjectLibrary.featureCategory(for: $0) == feature }.count
+        localItems.filter { PatchProjectLibrary.featureCategory(for: $0) == feature }.count
     }
 
     var body: some View {
@@ -848,54 +848,33 @@ private struct DeltaHomeTab: View {
             }
             DeltaCard {
                 HStack {
-                    DeltaSectionTitle("REMOTE PATCHES", icon: "arrow.down.circle.fill")
+                    DeltaSectionTitle("INSTALLED PATCHES", icon: "shippingbox.fill")
                     Spacer()
-                    Button {
-                        patchStore.syncNow()
-                    } label: {
-                        Image(systemName: patchStore.remoteSyncState == .syncing ? "arrow.triangle.2.circlepath" : "arrow.clockwise")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(DeltaColors.purple)
-                            .rotationEffect(.degrees(patchStore.remoteSyncState == .syncing ? 180 : 0))
-                    }
-                    .buttonStyle(.plain)
                 }
 
                 HStack(spacing: 7) {
-                    Circle()
-                        .fill(patchStore.remoteSyncState == .online ? Color.green : patchStore.remoteSyncState == .syncing ? Color.orange : Color.gray)
-                        .frame(width: 7, height: 7)
-                    Text(remoteStatusTitle)
+                    Text("Somente pacotes locais")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(DeltaColors.muted)
                     Spacer()
-                    Text("\(remoteItems.count) patches")
+                    Text("\(localItems.count) patches")
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(DeltaColors.purple)
                 }
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 7) {
-                    remoteFeatureBadge("Cache", icon: "externaldrive.fill", count: featureCount(.cache))
-                    remoteFeatureBadge("Avatar", icon: "person.crop.circle.fill", count: featureCount(.avatar))
-                    remoteFeatureBadge("Hologram", icon: "wand.and.stars", count: featureCount(.hologram))
-                    remoteFeatureBadge("Aimbot / ESP", icon: "scope", count: featureCount(.external))
-                    remoteFeatureBadge("Skin", icon: "tshirt.fill", count: featureCount(.skin), emphasized: true)
+                    localFeatureBadge("Cache", icon: "externaldrive.fill", count: featureCount(.cache))
+                    localFeatureBadge("Avatar", icon: "person.crop.circle.fill", count: featureCount(.avatar))
+                    localFeatureBadge("Hologram", icon: "wand.and.stars", count: featureCount(.hologram))
+                    localFeatureBadge("Aimbot / ESP", icon: "scope", count: featureCount(.external))
+                    localFeatureBadge("Skin", icon: "tshirt.fill", count: featureCount(.skin), emphasized: true)
                 }
 
             }
         }
     }
 
-    private var remoteStatusTitle: String {
-        switch patchStore.remoteSyncState {
-        case .idle: return "Remote feed aguardando"
-        case .syncing: return "Sincronizando feed remoto..."
-        case .online: return "Feed remoto online"
-        case .offline: return "Feed remoto offline"
-        }
-    }
-
-    private func remoteFeatureBadge(_ title: String, icon: String, count: Int, emphasized: Bool = false) -> some View {
+    private func localFeatureBadge(_ title: String, icon: String, count: Int, emphasized: Bool = false) -> some View {
         VStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.system(size: emphasized ? 22 : 16, weight: .semibold))
@@ -1011,7 +990,7 @@ private struct DeltaRemoteFeatureTab: View {
                         DeltaSectionTitle(title, icon: icon)
                     }
                     Spacer()
-                    Text("\(items.count) REMOTE")
+                    Text("\(items.count) LOCAL")
                         .font(.system(size: 8, weight: .black))
                         .foregroundStyle(DeltaColors.purple)
                 }
@@ -1027,11 +1006,11 @@ private struct DeltaRemoteFeatureTab: View {
                         Image(systemName: "shippingbox")
                             .font(.system(size: 28, weight: .light))
                             .foregroundStyle(DeltaColors.purple)
-                        Text(patchStore.remoteSyncState == .syncing ? "Sincronizando patches remotos..." : "Nenhum patch nesta categoria ainda")
+                        Text("Nenhum patch local nesta categoria ainda")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(DeltaColors.ink)
                             .multilineTextAlignment(.center)
-                        Text("Atualize o feed no Dashboard e permaneça nesta aba para acompanhar os patches recebidos.")
+                        Text("Importe um pacote .3105 local para que ele apareça nesta lista.")
                             .font(.caption)
                             .foregroundStyle(DeltaColors.muted)
                             .multilineTextAlignment(.center)
@@ -1049,21 +1028,11 @@ private struct DeltaRemoteFeatureTab: View {
                             }
                         } label: {
                             HStack(spacing: 10) {
-                                if feature == .skin, let iconURL = PatchProjectLibrary.remoteIconURL(for: item.id) {
-                                    AsyncImage(url: iconURL) { phase in
-                                        if let image = phase.image { image.resizable().scaledToFit().padding(7) }
-                                        else { Image(systemName: icon).resizable().scaledToFit().padding(15).foregroundStyle(DeltaColors.purple) }
-                                    }
-                                    .frame(width: 78, height: 78)
-                                    .background(DeltaColors.purple.opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                } else {
-                                    Image(systemName: icon)
-                                        .font(.title3)
-                                        .foregroundStyle(DeltaColors.purple)
-                                        .frame(width: 42, height: 42)
-                                        .background(DeltaColors.purple.opacity(0.10), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                                }
+                                Image(systemName: icon)
+                                    .font(.title3)
+                                    .foregroundStyle(DeltaColors.purple)
+                                    .frame(width: 42, height: 42)
+                                    .background(DeltaColors.purple.opacity(0.10), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(PatchProjectLibrary.displayName(for: item).isEmpty ? (item.project?.name ?? item.packageURL.deletingPathExtension().lastPathComponent) : PatchProjectLibrary.displayName(for: item))
                                         .font(.subheadline.weight(.bold))

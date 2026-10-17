@@ -116,12 +116,6 @@
 "patch.category" = "补丁分类";
 "patch.feature" = "补丁类型";
 "patch.feature.cache" = "缓存";
-"patch.sync.title" = "补丁同步";
-"patch.sync.waiting" = "等待同步";
-"patch.sync.syncing" = "正在同步…";
-"patch.sync.updated" = "源已更新";
-"patch.sync.partial" = "已接收部分源";
-"patch.sync.offline" = "无网络连接";
 "patch.feature.avatar" = "头像";
 "patch.feature.hologram" = "全息";
 "patch.feature.external" = "External";
@@ -244,8 +238,7 @@
 "patch.error.apply" = "无法应用补丁。之前的所有写入均已回滚。";
 "patch.error.restore" = "无法安全恢复原始文件。未覆盖任何未经验证的目标。";
 "patch.error.reset" = "无法将文件重置为应用时的软件包状态。所有部分写入均已回滚。";
-"patch.error.invalid_import_link" = "补丁导入链接无效。请使用指向 .3105 软件包的安全 HTTPS 链接。";
-"patch.error.remote_import" = "无法安全下载补丁。请检查链接后重试。";
+"patch.error.invalid_local_package" = "这不是有效的本地 .3105 软件包。请选择有效的软件包文件。";
 
 "accessibility.open_logs" = "打开日志";
 "accessibility.open_settings" = "打开设置";
@@ -737,15 +730,6 @@
 "external.start" = "开始";
 "external.general" = "常规";
 "external.xray" = "透视";
-"patch.remote.hs_alto" = "高位 HS";
-"patch.remote.hs_alto_antena" = "高位 HS + 天线";
-"patch.remote.hs_alto_pescoco" = "高位 HS + 脖子";
-"patch.remote.hs_peito" = "胸部 HS";
-"patch.remote.hs_peito_antena" = "胸部 HS + 天线";
-"patch.remote.hs_peito_com_antena" = "胸部 HS 带天线";
-"patch.remote.hs_pescoco" = "脖子 HS";
-"patch.remote.hs_pescoco_antena" = "脖子 HS + 天线";
-"patch.remote.hs_pescoco_com_antena" = "脖子 HS 带天线";
 "settings.palette.cyan" = "青色";
 "settings.palette.yellow" = "黄色";
 "settings.palette.indigo" = "靛蓝";

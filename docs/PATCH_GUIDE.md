@@ -197,7 +197,7 @@ Keep related apps closed while applying or restoring a patch. Do not rename the 
 
 - **Export** synchronizes the latest workspace contents before sharing the `.3105` file.
 - Import from Files by opening or sharing a `.3105` package to 3105.
-- A website may open the app with `threeoneosfive://import?url=<percent-encoded HTTPS URL>`. Only HTTPS package URLs without embedded credentials are accepted.
+- Import is local-only. Open or share a `.3105` file from Files; web URLs and remote import links are not accepted.
 - On a new device or installation, a protected package asks for its password once. 3105 stores the unlocked content key in Keychain; the exported package remains encrypted and tied to its original password.
 - Legacy v1–v5 packages remain supported and retain their original behavior. Schema v6 adds `settings.json`, typed placeholders, and JSON editing; v7 adds App Group mappings; v8 adds `canRemove` dynamic removal choices; v9 adds prefix key selectors and device-loaded `Data` values. Older apps safely reject newer schemas instead of misinterpreting their operations.
 

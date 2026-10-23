@@ -1141,7 +1141,7 @@ private struct DeltaRemoteFeatureTab: View {
                                         .font(.subheadline.weight(.bold))
                                         .foregroundStyle(DeltaColors.ink)
                                         .lineLimit(1)
-                                    Text(applied ? (feature == .external ? "Running — tap to clear data" : "Applied — tap to restore") : item.isLocked ? "Protected — tap to unlock" : "Tap to configure")
+                                    Text(applied ? (feature == .external ? "Running — turn off to restore original" : "Applied — turn off to restore original") : item.isLocked ? "Protected — tap to unlock" : "Turn on to apply")
                                         .font(.caption2)
                                         .foregroundStyle(DeltaColors.muted)
                                 }
@@ -1154,19 +1154,7 @@ private struct DeltaRemoteFeatureTab: View {
 
                         if expandedItemID == item.id {
                             Divider().overlay(DeltaColors.purple.opacity(0.12))
-                            if applied {
-                                Button {
-                                    patchStore.restoreInline(item)
-                                } label: {
-                                    Label(feature == .external ? "CLEAR DATA" : "RESTORE ORIGINAL", systemImage: "arrow.uturn.backward.circle.fill")
-                                        .font(.system(size: 9, weight: .black))
-                                        .foregroundStyle(.white)
-                                        .frame(maxWidth: .infinity, minHeight: 38)
-                                        .background(Color.orange, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(patchStore.isBusy)
-                            } else if item.isLocked {
+                            if item.isLocked {
                                 Button {
                                     patchStore.requestUnlock(for: item)
                                 } label: {
@@ -1179,17 +1167,7 @@ private struct DeltaRemoteFeatureTab: View {
                                 .buttonStyle(.plain)
                                 .disabled(patchStore.isBusy)
                             } else {
-                                Button {
-                                    patchStore.applyInline(item)
-                                } label: {
-                                    Label(feature == .external ? "START" : "APPLY PATCH", systemImage: "play.fill")
-                                        .font(.system(size: 9, weight: .black))
-                                        .foregroundStyle(.white)
-                                        .frame(maxWidth: .infinity, minHeight: 38)
-                                        .background(DeltaColors.purple, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(patchStore.isBusy)
+                                DeltaPatchActivationToggle(item: item)
                             }
                         }
                     }
@@ -1224,7 +1202,7 @@ private struct DeltaRemoteCustomFeatureTab: View {
         VStack(spacing: 12) {
             DeltaCard {
                 DeltaSectionTitle("\(title.uppercased()) PATCHES", icon: icon)
-                Text("Toque no patch para expandir. Depois você pode aplicar ou restaurar o original.")
+                Text("Toque no patch para expandir. Ligue o toggle para aplicar e desligue para restaurar o original.")
                     .font(.caption)
                     .foregroundStyle(DeltaColors.muted)
             }
@@ -1253,7 +1231,7 @@ private struct DeltaRemoteCustomFeatureTab: View {
                                 }
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(PatchProjectLibrary.displayName(for: item)).font(.subheadline.weight(.bold)).foregroundStyle(DeltaColors.ink).lineLimit(1)
-                                    Text(applied ? "Applied — tap to restore" : item.isLocked ? "Protected — tap to unlock" : "Tap to configure").font(.caption2).foregroundStyle(DeltaColors.muted)
+                                    Text(applied ? "Applied — turn off to restore original" : item.isLocked ? "Protected — tap to unlock" : "Turn on to apply").font(.caption2).foregroundStyle(DeltaColors.muted)
                                 }
                                 Spacer()
                                 Image(systemName: expandedItemID == item.id ? "chevron.up.circle.fill" : "chevron.down.circle").foregroundStyle(DeltaColors.purple)
@@ -1261,12 +1239,10 @@ private struct DeltaRemoteCustomFeatureTab: View {
                         }.buttonStyle(.plain)
                         if expandedItemID == item.id {
                             Divider().overlay(DeltaColors.purple.opacity(0.12))
-                            if applied {
-                                Button { patchStore.restoreInline(item) } label: { Label("RESTORE ORIGINAL", systemImage: "arrow.uturn.backward.circle.fill").font(.system(size: 9, weight: .black)).foregroundStyle(.white).frame(maxWidth: .infinity, minHeight: 38).background(Color.orange, in: RoundedRectangle(cornerRadius: 10, style: .continuous)) }.buttonStyle(.plain).disabled(patchStore.isBusy)
-                            } else if item.isLocked {
+                            if item.isLocked {
                                 Button { patchStore.requestUnlock(for: item) } label: { Label("UNLOCK PATCH", systemImage: "lock.open.fill").font(.system(size: 9, weight: .black)).foregroundStyle(.white).frame(maxWidth: .infinity, minHeight: 38).background(DeltaColors.purple, in: RoundedRectangle(cornerRadius: 10, style: .continuous)) }.buttonStyle(.plain).disabled(patchStore.isBusy)
                             } else {
-                                Button { patchStore.applyInline(item) } label: { Label("APPLY PATCH", systemImage: "play.fill").font(.system(size: 9, weight: .black)).foregroundStyle(.white).frame(maxWidth: .infinity, minHeight: 38).background(DeltaColors.purple, in: RoundedRectangle(cornerRadius: 10, style: .continuous)) }.buttonStyle(.plain).disabled(patchStore.isBusy)
+                                DeltaPatchActivationToggle(item: item)
                             }
                         }
                     }
@@ -1275,6 +1251,56 @@ private struct DeltaRemoteCustomFeatureTab: View {
         }
     }
 }
+
+private struct DeltaPatchActivationToggle: View {
+    @EnvironmentObject private var patchStore: PatchProjectStore
+    let item: PatchLibraryItem
+
+    private var isApplied: Bool {
+        DevicePatchService.latestReceipt(projectID: item.id) != nil
+    }
+
+    private var activationBinding: Binding<Bool> {
+        Binding(
+            get: { isApplied },
+            set: { isEnabled in
+                guard !patchStore.isBusy, !item.isLocked else { return }
+                if isEnabled {
+                    guard !isApplied else { return }
+                    patchStore.applyInline(item)
+                } else {
+                    guard isApplied else { return }
+                    patchStore.restoreInline(item)
+                }
+            }
+        )
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(isApplied ? "PATCH ACTIVE" : "PATCH INACTIVE")
+                .font(.system(size: 9, weight: .black, design: .rounded))
+                .foregroundStyle(isApplied ? Color.green : DeltaColors.muted)
+            Spacer(minLength: 8)
+            if patchStore.isBusy {
+                ProgressView()
+                    .tint(DeltaColors.purple)
+                    .frame(width: 37, height: 23)
+            } else {
+                Toggle("Patch active", isOn: activationBinding)
+                    .labelsHidden()
+                    .toggleStyle(DeltaToggleStyle())
+                    .disabled(item.isLocked)
+                    .accessibilityLabel("Patch active")
+                    .accessibilityHint(isApplied
+                        ? "Turn off to restore the original files"
+                        : "Turn on to apply the patch")
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
 
 private struct DeltaAimbotTab: View {
     @State private var launchAntiBan = false

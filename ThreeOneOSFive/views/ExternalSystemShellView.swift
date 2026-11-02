@@ -106,7 +106,7 @@ struct ExternalSystemShellView: View {
                                     .font(.system(size: 30, weight: .bold))
                                     .foregroundStyle(DeltaColors.purple)
                             }
-                            Text(remoteConfig.config.maintenance.title.isEmpty ? "Em manutenÃ§Ã£o" : remoteConfig.config.maintenance.title)
+                            Text(remoteConfig.config.maintenance.title.isEmpty ? "Em manutencao" : remoteConfig.config.maintenance.title)
                                 .font(.title2.weight(.bold))
                                 .foregroundStyle(DeltaColors.ink)
                             Text(remoteConfig.config.maintenance.message)
@@ -133,7 +133,7 @@ struct ExternalSystemShellView: View {
                         VStack(spacing: 10) {
                             Image(systemName: "eye.slash.fill")
                                 .font(.system(size: 28, weight: .bold))
-                            Text(isVietnamese ? "ConteÃºdo protegido" : "Protected content")
+                            Text(isVietnamese ? "Conteudo protegido" : "Protected content")
                                 .font(.headline.weight(.bold))
                         }
                         .foregroundStyle(.white)
@@ -822,10 +822,10 @@ private struct DeltaTabBar: View {
                     .font(.system(size: 11, weight: .black))
                     .tracking(1.1)
                     .foregroundStyle(DeltaColors.purple)
-                Text(selectedGame == .freeFire ? "Patches disponÃ­veis para FF" : "Patches disponÃ­veis para FF MAX")
+                Text(selectedGame == .freeFire ? "Patches disponiveis para FF" : "Patches disponiveis para FF MAX")
                     .font(.system(size: 22, weight: .black, design: .rounded))
                     .foregroundStyle(DeltaColors.ink)
-                Text("Toque em uma opÃ§Ã£o para abrir os patches.")
+                Text("Toque em uma opcao para abrir os patches.")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(DeltaColors.muted)
             }
@@ -1141,7 +1141,7 @@ private struct DeltaRemoteFeatureTab: View {
                         .font(.system(size: 8, weight: .black))
                         .foregroundStyle(DeltaColors.purple)
                 }
-                Text("Toque no patch para expandir. Depois vocÃª pode aplicar ou restaurar o original.")
+                Text("Toque no patch para expandir. Depois voce pode aplicar ou restaurar o original.")
                     .font(.caption)
                     .foregroundStyle(DeltaColors.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1157,7 +1157,7 @@ private struct DeltaRemoteFeatureTab: View {
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(DeltaColors.ink)
                             .multilineTextAlignment(.center)
-                        Text("Atualize o feed no Dashboard e permaneÃ§a nesta aba para acompanhar os patches recebidos.")
+                        Text("Atualize o feed no Dashboard e permaneca nesta aba para acompanhar os patches recebidos.")
                             .font(.caption)
                             .foregroundStyle(DeltaColors.muted)
                             .multilineTextAlignment(.center)
@@ -1279,7 +1279,7 @@ private struct DeltaRemoteCustomFeatureTab: View {
         VStack(spacing: 12) {
             DeltaCard {
                 DeltaSectionTitle("\(title.uppercased()) PATCHES", icon: icon)
-                Text("Toque no patch para expandir. Depois vocÃª pode aplicar ou restaurar o original.")
+                Text("Toque no patch para expandir. Depois voce pode aplicar ou restaurar o original.")
                     .font(.caption)
                     .foregroundStyle(DeltaColors.muted)
             }
@@ -1509,7 +1509,7 @@ private struct DeltaReferenceSettingsTab: View {
             DeltaCard {
                 DeltaSectionTitle(isVietnamese ? "APARÃNCIA" : "APPEARANCE", icon: darkMode ? "moon.fill" : "sun.max.fill")
                 DeltaToggleRow(darkMode ? "Dark" : "Claro", isOn: $darkMode)
-                Text(isVietnamese ? "A alteraÃ§Ã£o Ã© aplicada instantaneamente em todas as telas." : "The change is applied instantly across every screen.")
+                Text(isVietnamese ? "A alteracao e aplicada instantaneamente em todas as telas." : "The change is applied instantly across every screen.")
                     .font(.caption2)
                     .foregroundStyle(DeltaColors.muted)
             }

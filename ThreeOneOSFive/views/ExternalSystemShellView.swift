@@ -1,6 +1,29 @@
 import SwiftUI
 import UIKit
 
+struct ScaleButtonStyle: ButtonStyle {
+    var scale: CGFloat = 0.96
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? scale : 1.0)
+            .opacity(configuration.isPressed ? 0.92 : 1.0)
+            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
+    }
+}
+struct DeltaCardShadow: ViewModifier {
+    var color: Color = DeltaColors.purple
+    func body(content: Content) -> some View {
+        content
+            .shadow(color: color.opacity(0.14), radius: 12, y: 4)
+            .shadow(color: color.opacity(0.06), radius: 2, y: 1)
+    }
+}
+extension View {
+    func deltaCardShadow(_ color: Color = DeltaColors.purple) -> some View {
+        modifier(DeltaCardShadow(color: color))
+    }
+}
+
 struct ExternalSystemShellView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var keySession: IOSKeySession
@@ -70,20 +93,35 @@ struct ExternalSystemShellView: View {
             }
 
             if remoteConfig.config.maintenance.enabled {
-                Color.black.opacity(0.96)
+                Color.black.opacity(0.55)
+                    .background(.ultraThinMaterial)
                     .ignoresSafeArea()
                     .overlay {
-                        VStack(spacing: 14) {
-                            Image(systemName: "wrench.and.screwdriver.fill")
-                                .font(.system(size: 34, weight: .bold))
-                                .foregroundStyle(DeltaColors.purple)
-                            Text(remoteConfig.config.maintenance.title.isEmpty ? "Em manutenção" : remoteConfig.config.maintenance.title)
+                        VStack(spacing: 16) {
+                            ZStack {
+                                Circle()
+                                    .fill(DeltaColors.purple.opacity(0.18))
+                                    .frame(width: 72, height: 72)
+                                Image(systemName: "wrench.and.screwdriver.fill")
+                                    .font(.system(size: 30, weight: .bold))
+                                    .foregroundStyle(DeltaColors.purple)
+                            }
+                            Text(remoteConfig.config.maintenance.title.isEmpty ? "Em manutenÃ§Ã£o" : remoteConfig.config.maintenance.title)
                                 .font(.title2.weight(.bold))
+                                .foregroundStyle(DeltaColors.ink)
                             Text(remoteConfig.config.maintenance.message)
                                 .multilineTextAlignment(.center)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(DeltaColors.muted)
+                                .font(.subheadline)
                         }
-                        .padding(32)
+                        .padding(36)
+                        .background(DeltaColors.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .strokeBorder(DeltaColors.line, lineWidth: 1)
+                        )
+                        .deltaCardShadow()
+                        .padding(28)
                     }
                     .zIndex(30)
             }
@@ -95,7 +133,7 @@ struct ExternalSystemShellView: View {
                         VStack(spacing: 10) {
                             Image(systemName: "eye.slash.fill")
                                 .font(.system(size: 28, weight: .bold))
-                            Text(isVietnamese ? "Conteúdo protegido" : "Protected content")
+                            Text(isVietnamese ? "ConteÃºdo protegido" : "Protected content")
                                 .font(.headline.weight(.bold))
                         }
                         .foregroundStyle(.white)
@@ -232,13 +270,13 @@ private enum DeltaTab: Hashable { case dashboard, cache, avatar, hologram, exter
     }
     var vietnameseTitle: String {
         switch self {
-        case .dashboard: return "Trang chủ"
+        case .dashboard: return "Trang chá»§"
         case .cache: return "Cache"
         case .avatar: return "Avatar"
         case .hologram: return "Hologram"
         case .external: return "External"
         case .skin: return "Skin"
-        case .settings: return "Cài đặt"
+        case .settings: return "CÃ i Äáº·t"
         case .custom(let identifier): return identifier
         }
     }
@@ -300,11 +338,27 @@ struct DeltaPalette {
 
     static func make(_ theme: DeltaTheme, darkMode: Bool) -> DeltaPalette {
         let storedHue = UserDefaults.standard.object(forKey: DeltaColors.customHueKey) as? Double
-        let primary = storedHue.map { Color(hue: $0, saturation: 0.92, brightness: 1.0) } ?? theme.swatch
+        let primary = storedHue.map { Color(hue: $0, saturation: 0.95, brightness: 1.0) } ?? theme.swatch
         if darkMode || theme == .dark {
-            return DeltaPalette(primary: primary, dark: Color(hue: storedHue ?? 0.76, saturation: 0.90, brightness: 0.72), page: Color(red: 0.008, green: 0.006, blue: 0.014), ink: Color.white.opacity(0.96), muted: Color(hue: storedHue ?? 0.76, saturation: 0.12, brightness: 0.78), card: Color(red: 0.025, green: 0.018, blue: 0.040).opacity(0.99), line: primary.opacity(0.20))
+            return DeltaPalette(
+                primary: primary,
+                dark: Color(hue: storedHue ?? 0.76, saturation: 0.92, brightness: 0.78),
+                page: Color(red: 0.04, green: 0.025, blue: 0.08),
+                ink: Color.white.opacity(0.97),
+                muted: Color(hue: storedHue ?? 0.76, saturation: 0.18, brightness: 0.72),
+                card: Color(red: 0.07, green: 0.045, blue: 0.12).opacity(0.98),
+                line: primary.opacity(0.32)
+            )
         }
-        return DeltaPalette(primary: primary, dark: Color(hue: storedHue ?? 0.76, saturation: 0.86, brightness: 0.72), page: Color(hue: storedHue ?? 0.76, saturation: 0.07, brightness: 0.985), ink: Color(hue: storedHue ?? 0.76, saturation: 0.55, brightness: 0.18), muted: Color(hue: storedHue ?? 0.76, saturation: 0.18, brightness: 0.45), card: Color.white.opacity(0.96), line: primary.opacity(0.16))
+        return DeltaPalette(
+            primary: primary,
+            dark: Color(hue: storedHue ?? 0.76, saturation: 0.90, brightness: 0.68),
+            page: Color(hue: storedHue ?? 0.76, saturation: 0.06, brightness: 0.98),
+            ink: Color(hue: storedHue ?? 0.76, saturation: 0.58, brightness: 0.16),
+            muted: Color(hue: storedHue ?? 0.76, saturation: 0.22, brightness: 0.42),
+            card: Color.white.opacity(0.97),
+            line: primary.opacity(0.22)
+        )
     }
 }
 
@@ -356,17 +410,17 @@ private struct DeltaSplashView: View {
                     }
                     .frame(width: 92, height: 92)
                     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .scaleEffect(pulse ? 1.05 : 0.95)
-                    .shadow(color: DeltaColors.purple.opacity(0.35), radius: pulse ? 24 : 10)
+                    .scaleEffect(pulse ? 1.08 : 0.92)
+                    .shadow(color: DeltaColors.purple.opacity(0.45), radius: pulse ? 28 : 12)
                 } else {
                     AppLogo(size: 92)
-                        .scaleEffect(pulse ? 1.05 : 0.95)
-                        .shadow(color: DeltaColors.purple.opacity(0.35), radius: pulse ? 24 : 10)
+                        .scaleEffect(pulse ? 1.08 : 0.92)
+                        .shadow(color: DeltaColors.purple.opacity(0.45), radius: pulse ? 28 : 12)
                 }
 
                 Text(brandName)
-                    .font(.system(size: 22, weight: .black, design: .rounded))
-                    .tracking(1.3)
+                    .font(.system(size: 24, weight: .heavy, design: .rounded))
+                    .tracking(0.6)
                     .foregroundStyle(DeltaColors.ink)
 
                 ProgressView()
@@ -414,13 +468,13 @@ private struct DeltaGameSelectorView: View {
                             .font(.system(size: 21, weight: .black, design: .rounded))
                             .tracking(1.2)
                             .foregroundStyle(DeltaColors.ink)
-                        Text(isVietnamese ? "Trình Thiết Kế & Quản Lý Bộ Quản" : "All-in-One Game Loader & Injector")
+                        Text(isVietnamese ? "TrÃ¬nh Thiáº¿t Káº¿ & Quáº£n LÃ½ Bá» Quáº£n" : "All-in-One Game Loader & Injector")
                             .font(.caption)
                             .foregroundStyle(DeltaColors.muted)
 
                         DeltaCard {
                             HStack {
-                                Label(isVietnamese ? "CHỌN GAME MỤC TIÊU" : "SELECT TARGET GAME", systemImage: "gamecontroller.fill")
+                                Label(isVietnamese ? "CHá»N GAME Má»¤C TIÃU" : "SELECT TARGET GAME", systemImage: "gamecontroller.fill")
                                     .font(.caption.weight(.black))
                                     .tracking(0.8)
                                     .foregroundStyle(DeltaColors.purple)
@@ -448,7 +502,7 @@ private struct DeltaGameSelectorView: View {
                                 onEnter()
                             }
                         } label: {
-                            Label(isVietnamese ? "VÀO MENU" : "ENTER MENU", systemImage: "square.grid.2x2.fill")
+                            Label(isVietnamese ? "VÃO MENU" : "ENTER MENU", systemImage: "square.grid.2x2.fill")
                                 .font(.subheadline.weight(.bold))
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity, minHeight: 46)
@@ -544,19 +598,19 @@ private struct DeltaAnnouncementView: View {
 
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
-                        Label(config.announcement.enabled && !config.announcement.title.isEmpty ? config.announcement.title : (isVietnamese ? "Thông Báo" : "Announcement"), systemImage: "megaphone.fill")
+                        Label(config.announcement.enabled && !config.announcement.title.isEmpty ? config.announcement.title : (isVietnamese ? "ThÃ´ng BÃ¡o" : "Announcement"), systemImage: "megaphone.fill")
                             .font(.headline.weight(.bold))
                             .foregroundStyle(DeltaColors.ink)
                         Spacer()
                         Button(action: dismiss) { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
                     }
-                    Text(config.announcement.enabled && !config.announcement.message.isEmpty ? config.announcement.message : (isVietnamese ? "Hiện Tại Chỉ Sử Dụng Được Aimbot Và AimBot Vector\n\nEXTERNAL SYSTEM cảm ơn các bạn đã đợi phiên bản mới.\n\nCó lỗi gì cứ góp ý nhé, chân thành cảm ơn các bạn" : "Hello everyone, this is a beta test version.\n\nCurrently, only AimBot and AimBot Vector are available for use.\n\nEXTERNAL SYSTEM thanks you all for waiting for the new version.\n\nIf you encounter any bugs or issues, feel free to give feedback. Thank you very much!"))
+                    Text(config.announcement.enabled && !config.announcement.message.isEmpty ? config.announcement.message : (isVietnamese ? "Hiá»n Táº¡i Chá» Sá»­ Dá»¥ng ÄÆ°á»£c Aimbot VÃ  AimBot Vector\n\nEXTERNAL SYSTEM cáº£m Æ¡n cÃ¡c báº¡n ÄÃ£ Äá»£i phiÃªn báº£n má»i.\n\nCÃ³ lá»i gÃ¬ cá»© gÃ³p Ã½ nhÃ©, chÃ¢n thÃ nh cáº£m Æ¡n cÃ¡c báº¡n" : "Hello everyone, this is a beta test version.\n\nCurrently, only AimBot and AimBot Vector are available for use.\n\nEXTERNAL SYSTEM thanks you all for waiting for the new version.\n\nIf you encounter any bugs or issues, feel free to give feedback. Thank you very much!"))
                         .font(.subheadline)
                         .foregroundStyle(DeltaColors.ink)
                         .fixedSize(horizontal: false, vertical: true)
                     Divider()
                     Button(action: dismiss) {
-                        Text(isVietnamese ? "ĐÃ HIỂU" : "GOT IT")
+                        Text(isVietnamese ? "ÄÃ HIá»U" : "GOT IT")
                             .font(.subheadline.weight(.bold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity, minHeight: 42)
@@ -677,7 +731,7 @@ private struct DeltaHeader: View {
             }
             .padding(2)
             .background(DeltaColors.card, in: Capsule())
-            .shadow(color: DeltaColors.purple.opacity(0.48), radius: 13, y: 3)
+            .shadow(color: DeltaColors.purple.opacity(0.55), radius: 16, y: 4)
             if showEye {
                 Image(systemName: "eye.fill")
                     .font(.caption.weight(.bold))
@@ -768,10 +822,10 @@ private struct DeltaTabBar: View {
                     .font(.system(size: 11, weight: .black))
                     .tracking(1.1)
                     .foregroundStyle(DeltaColors.purple)
-                Text(selectedGame == .freeFire ? "Patches disponíveis para FF" : "Patches disponíveis para FF MAX")
+                Text(selectedGame == .freeFire ? "Patches disponÃ­veis para FF" : "Patches disponÃ­veis para FF MAX")
                     .font(.system(size: 22, weight: .black, design: .rounded))
                     .foregroundStyle(DeltaColors.ink)
-                Text("Toque em uma opção para abrir os patches.")
+                Text("Toque em uma opÃ§Ã£o para abrir os patches.")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(DeltaColors.muted)
             }
@@ -1087,7 +1141,7 @@ private struct DeltaRemoteFeatureTab: View {
                         .font(.system(size: 8, weight: .black))
                         .foregroundStyle(DeltaColors.purple)
                 }
-                Text("Toque no patch para expandir. Depois você pode aplicar ou restaurar o original.")
+                Text("Toque no patch para expandir. Depois vocÃª pode aplicar ou restaurar o original.")
                     .font(.caption)
                     .foregroundStyle(DeltaColors.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1103,7 +1157,7 @@ private struct DeltaRemoteFeatureTab: View {
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(DeltaColors.ink)
                             .multilineTextAlignment(.center)
-                        Text("Atualize o feed no Dashboard e permaneça nesta aba para acompanhar os patches recebidos.")
+                        Text("Atualize o feed no Dashboard e permaneÃ§a nesta aba para acompanhar os patches recebidos.")
                             .font(.caption)
                             .foregroundStyle(DeltaColors.muted)
                             .multilineTextAlignment(.center)
@@ -1141,7 +1195,7 @@ private struct DeltaRemoteFeatureTab: View {
                                         .font(.subheadline.weight(.bold))
                                         .foregroundStyle(DeltaColors.ink)
                                         .lineLimit(1)
-                                    Text(applied ? (feature == .external ? "Running — tap to clear data" : "Applied — tap to restore") : item.isLocked ? "Protected — tap to unlock" : "Tap to configure")
+                                    Text(applied ? (feature == .external ? "Running â tap to clear data" : "Applied â tap to restore") : item.isLocked ? "Protected â tap to unlock" : "Tap to configure")
                                         .font(.caption2)
                                         .foregroundStyle(DeltaColors.muted)
                                 }
@@ -1154,42 +1208,43 @@ private struct DeltaRemoteFeatureTab: View {
 
                         if expandedItemID == item.id {
                             Divider().overlay(DeltaColors.purple.opacity(0.12))
-                            if applied {
-                                Button {
-                                    patchStore.restoreInline(item)
-                                } label: {
-                                    Label(feature == .external ? "CLEAR DATA" : "RESTORE ORIGINAL", systemImage: "arrow.uturn.backward.circle.fill")
-                                        .font(.system(size: 9, weight: .black))
-                                        .foregroundStyle(.white)
-                                        .frame(maxWidth: .infinity, minHeight: 38)
-                                        .background(Color.orange, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(patchStore.isBusy)
-                            } else if item.isLocked {
+                            if item.isLocked {
                                 Button {
                                     patchStore.requestUnlock(for: item)
                                 } label: {
                                     Label("UNLOCK PATCH", systemImage: "lock.open.fill")
-                                        .font(.system(size: 9, weight: .black))
+                                        .font(.system(size: 11, weight: .black))
                                         .foregroundStyle(.white)
-                                        .frame(maxWidth: .infinity, minHeight: 38)
-                                        .background(DeltaColors.purple, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                        .frame(maxWidth: .infinity, minHeight: 40)
+                                        .background(DeltaColors.purple, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 }
                                 .buttonStyle(.plain)
                                 .disabled(patchStore.isBusy)
                             } else {
-                                Button {
-                                    patchStore.applyInline(item)
-                                } label: {
-                                    Label(feature == .external ? "START" : "APPLY PATCH", systemImage: "play.fill")
-                                        .font(.system(size: 9, weight: .black))
-                                        .foregroundStyle(.white)
-                                        .frame(maxWidth: .infinity, minHeight: 38)
-                                        .background(DeltaColors.purple, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                HStack(spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(applied ? (feature == .external ? "Running" : "Applied") : "Off")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(DeltaColors.ink)
+                                        Text(applied
+                                              ? (feature == .external ? "Turn off to clear data" : "Turn off to restore original")
+                                              : (feature == .external ? "Turn on to start" : "Turn on to apply patch"))
+                                            .font(.caption2)
+                                            .foregroundStyle(DeltaColors.muted)
+                                    }
+                                    Spacer()
+                                    Toggle("", isOn: Binding(
+                                        get: { applied },
+                                        set: { on in
+                                            if on { patchStore.applyInline(item) }
+                                            else { patchStore.restoreInline(item) }
+                                        }
+                                    ))
+                                    .labelsHidden()
+                                    .toggleStyle(DeltaToggleStyle())
+                                    .disabled(patchStore.isBusy)
                                 }
-                                .buttonStyle(.plain)
-                                .disabled(patchStore.isBusy)
+                                .padding(.vertical, 4)
                             }
                         }
                     }
@@ -1224,7 +1279,7 @@ private struct DeltaRemoteCustomFeatureTab: View {
         VStack(spacing: 12) {
             DeltaCard {
                 DeltaSectionTitle("\(title.uppercased()) PATCHES", icon: icon)
-                Text("Toque no patch para expandir. Depois você pode aplicar ou restaurar o original.")
+                Text("Toque no patch para expandir. Depois vocÃª pode aplicar ou restaurar o original.")
                     .font(.caption)
                     .foregroundStyle(DeltaColors.muted)
             }
@@ -1253,7 +1308,7 @@ private struct DeltaRemoteCustomFeatureTab: View {
                                 }
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(PatchProjectLibrary.displayName(for: item)).font(.subheadline.weight(.bold)).foregroundStyle(DeltaColors.ink).lineLimit(1)
-                                    Text(applied ? "Applied — tap to restore" : item.isLocked ? "Protected — tap to unlock" : "Tap to configure").font(.caption2).foregroundStyle(DeltaColors.muted)
+                                    Text(applied ? "Applied â tap to restore" : item.isLocked ? "Protected â tap to unlock" : "Tap to configure").font(.caption2).foregroundStyle(DeltaColors.muted)
                                 }
                                 Spacer()
                                 Image(systemName: expandedItemID == item.id ? "chevron.up.circle.fill" : "chevron.down.circle").foregroundStyle(DeltaColors.purple)
@@ -1261,12 +1316,39 @@ private struct DeltaRemoteCustomFeatureTab: View {
                         }.buttonStyle(.plain)
                         if expandedItemID == item.id {
                             Divider().overlay(DeltaColors.purple.opacity(0.12))
-                            if applied {
-                                Button { patchStore.restoreInline(item) } label: { Label("RESTORE ORIGINAL", systemImage: "arrow.uturn.backward.circle.fill").font(.system(size: 9, weight: .black)).foregroundStyle(.white).frame(maxWidth: .infinity, minHeight: 38).background(Color.orange, in: RoundedRectangle(cornerRadius: 10, style: .continuous)) }.buttonStyle(.plain).disabled(patchStore.isBusy)
-                            } else if item.isLocked {
-                                Button { patchStore.requestUnlock(for: item) } label: { Label("UNLOCK PATCH", systemImage: "lock.open.fill").font(.system(size: 9, weight: .black)).foregroundStyle(.white).frame(maxWidth: .infinity, minHeight: 38).background(DeltaColors.purple, in: RoundedRectangle(cornerRadius: 10, style: .continuous)) }.buttonStyle(.plain).disabled(patchStore.isBusy)
+                            if item.isLocked {
+                                Button { patchStore.requestUnlock(for: item) } label: {
+                                    Label("UNLOCK PATCH", systemImage: "lock.open.fill")
+                                        .font(.system(size: 11, weight: .black))
+                                        .foregroundStyle(.white)
+                                        .frame(maxWidth: .infinity, minHeight: 40)
+                                        .background(DeltaColors.purple, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(patchStore.isBusy)
                             } else {
-                                Button { patchStore.applyInline(item) } label: { Label("APPLY PATCH", systemImage: "play.fill").font(.system(size: 9, weight: .black)).foregroundStyle(.white).frame(maxWidth: .infinity, minHeight: 38).background(DeltaColors.purple, in: RoundedRectangle(cornerRadius: 10, style: .continuous)) }.buttonStyle(.plain).disabled(patchStore.isBusy)
+                                HStack(spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(applied ? "Applied" : "Not applied")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(DeltaColors.ink)
+                                        Text(applied ? "Turn off to restore original" : "Turn on to apply patch")
+                                            .font(.caption2)
+                                            .foregroundStyle(DeltaColors.muted)
+                                    }
+                                    Spacer()
+                                    Toggle("", isOn: Binding(
+                                        get: { applied },
+                                        set: { on in
+                                            if on { patchStore.applyInline(item) }
+                                            else { patchStore.restoreInline(item) }
+                                        }
+                                    ))
+                                    .labelsHidden()
+                                    .toggleStyle(DeltaToggleStyle())
+                                    .disabled(patchStore.isBusy)
+                                }
+                                .padding(.vertical, 4)
                             }
                         }
                     }
@@ -1303,7 +1385,7 @@ private struct DeltaAimbotTab: View {
             DeltaCard {
                 DeltaSectionTitle("AIMBOT SETTINGS", icon: "slider.horizontal.3")
                 DeltaToggleRow("Draw Field Of View", isOn: $drawFOV)
-                DeltaSliderRow("Field Of View", value: $fov, range: 0...120, suffix: "°")
+                DeltaSliderRow("Field Of View", value: $fov, range: 0...120, suffix: "Â°")
                 DeltaSliderRow("Aimbot Distance", value: $distance, range: 0...150, suffix: "m")
                 DeltaToggleRow("Ignore Knocked", isOn: $ignoreKnocked)
             }
@@ -1421,20 +1503,20 @@ private struct DeltaReferenceSettingsTab: View {
                 .padding(.horizontal, 4)
             }
             DeltaCard {
-                DeltaSectionTitle(isVietnamese ? "QUYỀN RIÊNG TƯ" : "PRIVACY", icon: "video.slash.fill")
-                DeltaToggleRow(isVietnamese ? "Chống stream" : "Stream Proof", isOn: $streamProof)
+                DeltaSectionTitle(isVietnamese ? "QUYá»N RIÃNG TÆ¯" : "PRIVACY", icon: "video.slash.fill")
+                DeltaToggleRow(isVietnamese ? "Chá»ng stream" : "Stream Proof", isOn: $streamProof)
             }
             DeltaCard {
-                DeltaSectionTitle(isVietnamese ? "APARÊNCIA" : "APPEARANCE", icon: darkMode ? "moon.fill" : "sun.max.fill")
+                DeltaSectionTitle(isVietnamese ? "APARÃNCIA" : "APPEARANCE", icon: darkMode ? "moon.fill" : "sun.max.fill")
                 DeltaToggleRow(darkMode ? "Dark" : "Claro", isOn: $darkMode)
-                Text(isVietnamese ? "A alteração é aplicada instantaneamente em todas as telas." : "The change is applied instantly across every screen.")
+                Text(isVietnamese ? "A alteraÃ§Ã£o Ã© aplicada instantaneamente em todas as telas." : "The change is applied instantly across every screen.")
                     .font(.caption2)
                     .foregroundStyle(DeltaColors.muted)
             }
             DeltaCard {
-                DeltaSectionTitle(isVietnamese ? "THÔNG TIN BẢN QUYỀN" : "LICENSE INFORMATION", icon: "key.fill")
-                DeltaInfoRow(isVietnamese ? "Bản quyền:" : "License:", value: "EXTERNAL SYSTEM")
-                DeltaInfoRow(isVietnamese ? "Hạn dùng:" : "Expired:", value: "Lifetime")
+                DeltaSectionTitle(isVietnamese ? "THÃNG TIN Báº¢N QUYá»N" : "LICENSE INFORMATION", icon: "key.fill")
+                DeltaInfoRow(isVietnamese ? "Báº£n quyá»n:" : "License:", value: "EXTERNAL SYSTEM")
+                DeltaInfoRow(isVietnamese ? "Háº¡n dÃ¹ng:" : "Expired:", value: "Lifetime")
                 HStack {
                     Text("UID:").font(.caption).foregroundStyle(DeltaColors.muted)
                     Spacer()
@@ -1443,34 +1525,34 @@ private struct DeltaReferenceSettingsTab: View {
                         withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) { copied = true }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { withAnimation { copied = false } }
                     } label: {
-                        Text(copied ? "✓" : (isVietnamese ? "Sao chép" : "Copy"))
+                        Text(copied ? "â" : (isVietnamese ? "Sao chÃ©p" : "Copy"))
                             .font(.caption.weight(.bold)).foregroundStyle(.white).padding(.horizontal, 10).padding(.vertical, 5).background(DeltaColors.purple, in: Capsule())
                     }.buttonStyle(.plain)
                 }
                 Text(deviceUID).font(.system(size: 8, design: .monospaced)).foregroundStyle(DeltaColors.ink).lineLimit(1).minimumScaleFactor(0.6)
             }
             DeltaCard {
-                DeltaSectionTitle(isVietnamese ? "TƯƠNG THÍCH HỆ ĐIỀU HÀNH" : "SYSTEM COMPATIBILITY", icon: "apple.logo")
+                DeltaSectionTitle(isVietnamese ? "TÆ¯Æ NG THÃCH Há» ÄIá»U HÃNH" : "SYSTEM COMPATIBILITY", icon: "apple.logo")
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(isVietnamese ? "Phiên bản iOS hiện tại:" : "Current iOS Version:").font(.caption).foregroundStyle(DeltaColors.ink)
+                        Text(isVietnamese ? "PhiÃªn báº£n iOS hiá»n táº¡i:" : "Current iOS Version:").font(.caption).foregroundStyle(DeltaColors.ink)
                         Text("iOS \(AppInfo.osVersion) (\(AppInfo.osBuild))").font(.caption2).foregroundStyle(DeltaColors.muted)
                     }
                     Spacer()
-                    DeltaStatusBadge(text: appState.isSupported ? (isVietnamese ? "HỖ TRỢ" : "SUPPORTED") : "UNSUPPORTED")
+                    DeltaStatusBadge(text: appState.isSupported ? (isVietnamese ? "Há» TRá»¢" : "SUPPORTED") : "UNSUPPORTED")
                 }
             }
             DeltaCard {
-                DeltaSectionTitle(isVietnamese ? "NGÔN NGỮ" : "LANGUAGE", icon: "globe")
+                DeltaSectionTitle(isVietnamese ? "NGÃN NGá»®" : "LANGUAGE", icon: "globe")
                 HStack(spacing: 0) {
                     DeltaLanguageButton(title: "English", active: languageCode == AppLanguage.english.rawValue) { languageCode = AppLanguage.english.rawValue }
-                    DeltaLanguageButton(title: "Tiếng Việt", active: languageCode == AppLanguage.vietnamese.rawValue) { languageCode = AppLanguage.vietnamese.rawValue }
+                    DeltaLanguageButton(title: "Tiáº¿ng Viá»t", active: languageCode == AppLanguage.vietnamese.rawValue) { languageCode = AppLanguage.vietnamese.rawValue }
                 }
                 .padding(3).background(DeltaColors.line.opacity(0.18), in: Capsule())
             }
             DeltaCard {
                 DeltaSectionTitle(isVietnamese ? "SISTEMA" : "SYSTEM", icon: "gearshape.fill")
-                Button { keySession.logout() } label: { DeltaActionRow(icon: "rectangle.portrait.and.arrow.right", title: isVietnamese ? "Đăng xuất tài khoản" : "Sign Out", color: .red) }.buttonStyle(.plain)
+                Button { keySession.logout() } label: { DeltaActionRow(icon: "rectangle.portrait.and.arrow.right", title: isVietnamese ? "ÄÄng xuáº¥t tÃ i khoáº£n" : "Sign Out", color: .red) }.buttonStyle(.plain)
             }
         }
     }
@@ -1533,7 +1615,7 @@ private struct DeltaSliderRow: View {
         self.range = range
         self.suffix = suffix
     }
-    var body: some View { VStack(spacing: 2) { HStack { Text(title).font(.caption).foregroundStyle(DeltaColors.ink); Spacer(); Text(String(format: suffix == "m" ? "%.0f%@" : suffix == "°" ? "%.0f%@" : "%.1f%@", value, suffix)).font(.caption2.weight(.bold)).foregroundStyle(DeltaColors.purple) }; Slider(value: $value, in: range).tint(DeltaColors.purple) } }
+    var body: some View { VStack(spacing: 2) { HStack { Text(title).font(.caption).foregroundStyle(DeltaColors.ink); Spacer(); Text(String(format: suffix == "m" ? "%.0f%@" : suffix == "Â°" ? "%.0f%@" : "%.1f%@", value, suffix)).font(.caption2.weight(.bold)).foregroundStyle(DeltaColors.purple) }; Slider(value: $value, in: range).tint(DeltaColors.purple) } }
 }
 
 private struct DeltaSegmented: View {
@@ -1566,5 +1648,5 @@ private struct DeltaActionRow: View {
 
 private struct DeltaErrorBanner: View {
     let dismiss: () -> Void
-    var body: some View { HStack { Text("ESP OFF (bật ESP Master)").font(.caption.weight(.bold)).foregroundStyle(.white); Spacer(); Button(action: dismiss) { Image(systemName: "xmark.circle.fill").foregroundStyle(.white.opacity(0.8)) } }.padding(.horizontal, 14).padding(.vertical, 11).background(Color(red: 0.04, green: 0.04, blue: 0.06)).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous)).shadow(color: .black.opacity(0.18), radius: 10, y: 5).padding(.horizontal, 8) }
+    var body: some View { HStack { Text("ESP OFF (báº­t ESP Master)").font(.caption.weight(.bold)).foregroundStyle(.white); Spacer(); Button(action: dismiss) { Image(systemName: "xmark.circle.fill").foregroundStyle(.white.opacity(0.8)) } }.padding(.horizontal, 14).padding(.vertical, 11).background(Color(red: 0.04, green: 0.04, blue: 0.06)).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous)).shadow(color: .black.opacity(0.18), radius: 10, y: 5).padding(.horizontal, 8) }
 }

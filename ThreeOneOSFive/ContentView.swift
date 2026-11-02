@@ -107,9 +107,10 @@ struct ContentView: View {
                     .buttonStyle(.plain)
                     .listRowBackground(
                         section.rawValue == tabNavigation.selectedTab
-                            ? AppTheme.accent.opacity(0.14)
+                            ? AppTheme.accent.opacity(0.18)
                             : Color.clear
                     )
+                    .listRowSeparatorTint(AppTheme.accent.opacity(0.25))
                     .accessibilityAddTraits(
                         section.rawValue == tabNavigation.selectedTab ? .isSelected : []
                     )
@@ -230,23 +231,23 @@ private struct InstalledLiquidGlassIcon: View {
             RoundedRectangle(cornerRadius: 9, style: .continuous)
                 .fill(.ultraThinMaterial)
             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(AppTheme.accent.opacity(0.10))
+                .fill(AppTheme.accent.opacity(0.16))
             Image(systemName: "tray.full.fill")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(AppTheme.accent)
             RoundedRectangle(cornerRadius: 9, style: .continuous)
                 .strokeBorder(
                     LinearGradient(
-                        colors: [.white.opacity(0.65), AppTheme.accent.opacity(0.24), .clear],
+                        colors: [.white.opacity(0.75), AppTheme.accent.opacity(0.35), .clear],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
-                    lineWidth: 0.9
+                    lineWidth: 1.0
                 )
         }
         .frame(width: 29, height: 29)
         .background(Color.clear)
-        .shadow(color: AppTheme.accent.opacity(0.18), radius: 6, y: 2)
+        .shadow(color: AppTheme.accent.opacity(0.28), radius: 8, y: 2)
         .accessibilityHidden(true)
     }
 }

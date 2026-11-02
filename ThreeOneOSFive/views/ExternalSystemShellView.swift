@@ -270,7 +270,7 @@ private enum DeltaTab: Hashable { case dashboard, cache, avatar, hologram, exter
     }
     var vietnameseTitle: String {
         switch self {
-        case .dashboard: return "Trang chá»§"
+        case .dashboard: return "Trang chÃ¡Â»Â§"
         case .cache: return "Cache"
         case .avatar: return "Avatar"
         case .hologram: return "Hologram"
@@ -610,7 +610,7 @@ private struct DeltaAnnouncementView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     Divider()
                     Button(action: dismiss) {
-                        Text(isVietnamese ? "ÄÃ HIá»U" : "GOT IT")
+                        Text(isVietnamese ? "ÃÂÃÂ HIÃ¡Â»ÂU" : "GOT IT")
                             .font(.subheadline.weight(.bold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity, minHeight: 42)
@@ -1195,7 +1195,7 @@ private struct DeltaRemoteFeatureTab: View {
                                         .font(.subheadline.weight(.bold))
                                         .foregroundStyle(DeltaColors.ink)
                                         .lineLimit(1)
-                                    Text(applied ? (feature == .external ? "Running â tap to clear data" : "Applied â tap to restore") : item.isLocked ? "Protected â tap to unlock" : "Tap to configure")
+                                    Text(applied ? (feature == .external ? "Running Ã¢ÂÂ tap to clear data" : "Applied Ã¢ÂÂ tap to restore") : item.isLocked ? "Protected Ã¢ÂÂ tap to unlock" : "Tap to configure")
                                         .font(.caption2)
                                         .foregroundStyle(DeltaColors.muted)
                                 }
@@ -1308,7 +1308,7 @@ private struct DeltaRemoteCustomFeatureTab: View {
                                 }
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(PatchProjectLibrary.displayName(for: item)).font(.subheadline.weight(.bold)).foregroundStyle(DeltaColors.ink).lineLimit(1)
-                                    Text(applied ? "Applied â tap to restore" : item.isLocked ? "Protected â tap to unlock" : "Tap to configure").font(.caption2).foregroundStyle(DeltaColors.muted)
+                                    Text(applied ? "Applied Ã¢ÂÂ tap to restore" : item.isLocked ? "Protected Ã¢ÂÂ tap to unlock" : "Tap to configure").font(.caption2).foregroundStyle(DeltaColors.muted)
                                 }
                                 Spacer()
                                 Image(systemName: expandedItemID == item.id ? "chevron.up.circle.fill" : "chevron.down.circle").foregroundStyle(DeltaColors.purple)
@@ -1504,7 +1504,7 @@ private struct DeltaReferenceSettingsTab: View {
             }
             DeltaCard {
                 DeltaSectionTitle(isVietnamese ? "QUYá»N RIÃNG TÆ¯" : "PRIVACY", icon: "video.slash.fill")
-                DeltaToggleRow(isVietnamese ? "Chá»ng stream" : "Stream Proof", isOn: $streamProof)
+                DeltaToggleRow(isVietnamese ? "ChÃ¡Â»Âng stream" : "Stream Proof", isOn: $streamProof)
             }
             DeltaCard {
                 DeltaSectionTitle(isVietnamese ? "APARÃNCIA" : "APPEARANCE", icon: darkMode ? "moon.fill" : "sun.max.fill")
@@ -1515,7 +1515,7 @@ private struct DeltaReferenceSettingsTab: View {
             }
             DeltaCard {
                 DeltaSectionTitle(isVietnamese ? "THÃNG TIN Báº¢N QUYá»N" : "LICENSE INFORMATION", icon: "key.fill")
-                DeltaInfoRow(isVietnamese ? "Báº£n quyá»n:" : "License:", value: "EXTERNAL SYSTEM")
+                DeltaInfoRow(isVietnamese ? "BÃ¡ÂºÂ£n quyÃ¡Â»Ân:" : "License:", value: "EXTERNAL SYSTEM")
                 DeltaInfoRow(isVietnamese ? "Háº¡n dÃ¹ng:" : "Expired:", value: "Lifetime")
                 HStack {
                     Text("UID:").font(.caption).foregroundStyle(DeltaColors.muted)
@@ -1525,7 +1525,7 @@ private struct DeltaReferenceSettingsTab: View {
                         withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) { copied = true }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { withAnimation { copied = false } }
                     } label: {
-                        Text(copied ? "â" : (isVietnamese ? "Sao chÃ©p" : "Copy"))
+                        Text(copied ? "Ã¢ÂÂ" : (isVietnamese ? "Sao chÃ©p" : "Copy"))
                             .font(.caption.weight(.bold)).foregroundStyle(.white).padding(.horizontal, 10).padding(.vertical, 5).background(DeltaColors.purple, in: Capsule())
                     }.buttonStyle(.plain)
                 }
@@ -1535,18 +1535,18 @@ private struct DeltaReferenceSettingsTab: View {
                 DeltaSectionTitle(isVietnamese ? "TÆ¯Æ NG THÃCH Há» ÄIá»U HÃNH" : "SYSTEM COMPATIBILITY", icon: "apple.logo")
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(isVietnamese ? "PhiÃªn báº£n iOS hiá»n táº¡i:" : "Current iOS Version:").font(.caption).foregroundStyle(DeltaColors.ink)
+                        Text(isVietnamese ? "PhiÃªn báº£n iOS hiÃ¡Â»Ân tÃ¡ÂºÂ¡i:" : "Current iOS Version:").font(.caption).foregroundStyle(DeltaColors.ink)
                         Text("iOS \(AppInfo.osVersion) (\(AppInfo.osBuild))").font(.caption2).foregroundStyle(DeltaColors.muted)
                     }
                     Spacer()
-                    DeltaStatusBadge(text: appState.isSupported ? (isVietnamese ? "Há» TRá»¢" : "SUPPORTED") : "UNSUPPORTED")
+                    DeltaStatusBadge(text: appState.isSupported ? (isVietnamese ? "HÃ¡Â»Â TRÃ¡Â»Â¢" : "SUPPORTED") : "UNSUPPORTED")
                 }
             }
             DeltaCard {
                 DeltaSectionTitle(isVietnamese ? "NGÃN NGá»®" : "LANGUAGE", icon: "globe")
                 HStack(spacing: 0) {
                     DeltaLanguageButton(title: "English", active: languageCode == AppLanguage.english.rawValue) { languageCode = AppLanguage.english.rawValue }
-                    DeltaLanguageButton(title: "Tiáº¿ng Viá»t", active: languageCode == AppLanguage.vietnamese.rawValue) { languageCode = AppLanguage.vietnamese.rawValue }
+                    DeltaLanguageButton(title: "TiÃ¡ÂºÂ¿ng ViÃ¡Â»Ât", active: languageCode == AppLanguage.vietnamese.rawValue) { languageCode = AppLanguage.vietnamese.rawValue }
                 }
                 .padding(3).background(DeltaColors.line.opacity(0.18), in: Capsule())
             }
@@ -1648,5 +1648,5 @@ private struct DeltaActionRow: View {
 
 private struct DeltaErrorBanner: View {
     let dismiss: () -> Void
-    var body: some View { HStack { Text("ESP OFF (báº­t ESP Master)").font(.caption.weight(.bold)).foregroundStyle(.white); Spacer(); Button(action: dismiss) { Image(systemName: "xmark.circle.fill").foregroundStyle(.white.opacity(0.8)) } }.padding(.horizontal, 14).padding(.vertical, 11).background(Color(red: 0.04, green: 0.04, blue: 0.06)).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous)).shadow(color: .black.opacity(0.18), radius: 10, y: 5).padding(.horizontal, 8) }
+    var body: some View { HStack { Text("ESP OFF (bÃ¡ÂºÂ­t ESP Master)").font(.caption.weight(.bold)).foregroundStyle(.white); Spacer(); Button(action: dismiss) { Image(systemName: "xmark.circle.fill").foregroundStyle(.white.opacity(0.8)) } }.padding(.horizontal, 14).padding(.vertical, 11).background(Color(red: 0.04, green: 0.04, blue: 0.06)).clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous)).shadow(color: .black.opacity(0.18), radius: 10, y: 5).padding(.horizontal, 8) }
 }
